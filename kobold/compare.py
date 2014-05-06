@@ -1,4 +1,6 @@
 import json
+from dateutil import parser
+
 from hash_functions import combine
 
 def acts_like_a_hash(candidate):
@@ -31,7 +33,7 @@ class DontCare(object):
                 return False
         elif self.rule == 'iso8601_datetime':
             try:
-                datetime.strptime(other_thing, '%Y-%m-%dT%H:%M:%S%z')
+                parser.parse(other_thing)
                 return True
             except:
                 return False
