@@ -1,3 +1,4 @@
+import re
 import json
 from dateutil import parser
 
@@ -86,6 +87,12 @@ class Compare(object):
             return cls.list_compare(expected, 
                                     actual,
                                     type_compare)
+        elif (expected.__class__ == re._pattern_type):
+            match = expected.match(actual)
+            if match:
+                return 'match'
+            else:
+                return ('regex: %s' % expected.pattern, actual)
         else:
             if expected == actual:
                 return 'match'
