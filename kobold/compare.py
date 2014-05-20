@@ -87,7 +87,7 @@ class Compare(object):
             return cls.list_compare(expected, 
                                     actual,
                                     type_compare)
-        elif (expected.__class__ == re._pattern_type):
+        elif (expected.__class__ == re._pattern_type and isinstance(actual, basestring)):
             match = expected.match(actual)
             if match:
                 return 'match'
