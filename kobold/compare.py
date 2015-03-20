@@ -118,7 +118,7 @@ class Compare(object):
             else:
                 type_compare['hash'] = compare_override
                 type_compare['list'] = compare_override
-            del(expected['__compare'])
+            expected = {key : value for (key, value) in expected.items() if key != '__compare'} 
 
         expected_return = {}
         actual_return = {}
@@ -188,29 +188,37 @@ class Compare(object):
                                expected,
                                actual,
                                type_compare):
-        missing_expected_indexes = range(len(expected_list))
-        missing_actual_indexes = range(len(actual_list))
-        for i in range(len(expected_list)):
-            expected_element = expected[i]
-            for j in missing_actual_indexes:
-                actual_element = actual[j]
+        missing_expected_indexes = range(len(expected))
+        missing_actual_indexes = range(len(actual))
+        expected_index_index = 0
+        while expected_index_index < len(missing_expected_indexes):
+            expected_index = missing_expected_indexes[expected_index_index]
+            expected_element = expected[expected_index]
+            actual_index_index = 0
+            while actual_index_index < len(missing_actual_indexes):
+                actual_index = missing_actual_indexes[actual_index_index]
+                actual_element = actual[actual_index]
                 result = cls.compare(expected_element, 
                                      actual_element, 
                                      type_compare)
                 if result == 'match':
-                    missing_expected_indexes.delete(i)
-                    missing_actual_indexes.delete(j)
+                    missing_expected_indexes.pop(expected_index_index)
+                    missing_actual_indexes.pop(actual_index_index)
+                    expected_index_index -= 1
+                    actual_index_index -= 1
                     break
+                actual_index_index += 1
+            expected_index_index += 1
 
         expected_return = ListDiff()
         actual_return = ListDiff()
-        for i in len(expected_list):
+        for i in range(len(expected)):
             if i in missing_expected_indexes:
                 expected_return.append(expected[i])
             else:
                 expected_return.append_match()
 
-        for j in len(actual_list):
+        for j in range(len(actual)):
             if j in missing_actual_indexes:
                 actual_return.append(actual[j])
             else:
