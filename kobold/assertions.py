@@ -4,12 +4,16 @@ from compare import Compare
 def assert_response_matches(expected,
                             response,
                             compare=None):
+    if compare is None:
+        compare = {}
     result = response_matches(expected,
                               response,
                               compare)
     raise_if_not_match(result)
 
 def assert_equal(expected, actual, compare=None):
+    if compare is None:
+        compare = {}
     result = Compare.compare(expected, 
                              actual,
                              type_compare=compare)
