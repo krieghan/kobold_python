@@ -118,7 +118,7 @@ class Compare(object):
             else:
                 type_compare['hash'] = compare_override
                 type_compare['list'] = compare_override
-            expected = {key : value for (key, value) in expected.items() if key != '__compare'} 
+            expected = dict((k, v) for (k, v) in expected.items() if k != '__compare'})
 
         expected_return = {}
         actual_return = {}
