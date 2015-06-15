@@ -10,6 +10,12 @@ def acts_like_a_hash(candidate):
 def acts_like_a_list(candidate):
     return isinstance(candidate, list)
 
+def compare(expected, actual, type_compare=None):
+    return Compare.compare(
+            expected,
+            actual,
+            type_compare=type_compare)
+
 class DontCare(object):
     def __init__(self,
                  rule='not_none_or_missing',
@@ -64,9 +70,13 @@ class Compare(object):
     def compare(cls,
                 expected,
                 actual,
-                type_compare={}):
+                type_compare=None):
+        if type_compare is None:
+            type_compare = {}
+        elif isinstance(type_compare, str):
+            type_compare = {'hash' : compare,
+                            'ordered' : True}
         default_type_compare = {'hash' : 'full',
-                                'list' : 'full',
                                 'ordered' : True}
         type_compare =\
             combine(default_type_compare, type_compare)
@@ -106,7 +116,6 @@ class Compare(object):
                      type_compare={}):
         default_type_compare =\
             {'hash' : 'full',
-             'list' : 'full',
              'dontcare_keys' : [],
              'ordered' : True}
         type_compare =\
@@ -117,7 +126,6 @@ class Compare(object):
                 type_compare = combine(default_type_compare, compare_override)
             else:
                 type_compare['hash'] = compare_override
-                type_compare['list'] = compare_override
             expected = dict((k, v) for (k, v) in expected.items() if k != '__compare')
 
         expected_return = {}
@@ -238,7 +246,6 @@ class Compare(object):
                      type_compare):
         default_type_compare =\
             {'hash' : 'full',
-             'list' : 'full',
              'ordered' : True}
         type_compare =\
             combine(default_type_compare, type_compare)

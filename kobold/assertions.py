@@ -1,5 +1,5 @@
 from response import response_matches
-from compare import Compare
+from compare import compare
 
 def assert_response_matches(expected,
                             response,
@@ -14,9 +14,9 @@ def assert_response_matches(expected,
 def assert_equal(expected, actual, compare=None):
     if compare is None:
         compare = {}
-    result = Compare.compare(expected, 
-                             actual,
-                             type_compare=compare)
+    result = compare(expected, 
+                     actual,
+                     type_compare=compare)
     raise_if_not_match(result)
 
 def raise_if_not_match(result):

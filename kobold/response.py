@@ -1,5 +1,5 @@
 import json
-from compare import Compare
+from compare import compare
 
 def parse_body(content_type, content):
     if content_type == 'application/json':
@@ -9,16 +9,16 @@ def parse_body(content_type, content):
 
 def response_matches(expected,
                      response,
-                     compare=None):
-    if compare is None:
-        compare = {'hash' : 'full',
-                   'list' : 'full',
-                   'ordered' : True}
+                     type_compare=None):
+    if type_compare is None:
+        type_compare = {
+                'hash' : 'full',
+                'ordered' : True}
     else:
-        if isinstance(compare, str):
-            compare = {'hash' : compare,
-                       'list' : compare,
-                       'ordered' : True}
+        if isinstance(type_compare, str):
+            type_compare = {
+                    'hash' : type_compare,
+                    'ordered' : True}
 
     default_expected =\
         {'status_code' : 200,
@@ -37,6 +37,6 @@ def response_matches(expected,
               'headers' : response.headers,
               'body' : parse_body(content_type, response.data)}
 
-    return Compare.compare(expected, 
-                           actual,
-                           compare)
+    return compare(expected, 
+                   actual,
+                   type_compare)
