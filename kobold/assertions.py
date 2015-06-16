@@ -3,20 +3,23 @@ from compare import compare
 
 def assert_response_matches(expected,
                             response,
-                            compare=None):
-    if compare is None:
-        compare = {}
+                            type_compare=None):
+    if type_compare is None:
+        type_compare = {}
     result = response_matches(expected,
                               response,
-                              compare)
+                              type_compare=type_compare)
     raise_if_not_match(result)
 
-def assert_equal(expected, actual, compare=None):
-    if compare is None:
-        compare = {}
+def assert_equal(
+        expected, 
+        actual, 
+        type_compare=None):
+    if type_compare is None:
+        type_compare = {}
     result = compare(expected, 
                      actual,
-                     type_compare=compare)
+                     type_compare=type_compare)
     raise_if_not_match(result)
 
 def raise_if_not_match(result):
