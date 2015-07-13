@@ -8,7 +8,7 @@ def acts_like_a_hash(candidate):
     return hasattr(candidate, 'items')
 
 def acts_like_a_list(candidate):
-    return isinstance(candidate, list)
+    return isinstance(candidate, list) or isinstance(candidate, tuple)
 
 def compare(expected, actual, type_compare=None):
     return Compare.compare(
@@ -74,7 +74,7 @@ class Compare(object):
         if type_compare is None:
             type_compare = {}
         elif isinstance(type_compare, str):
-            type_compare = {'hash' : compare,
+            type_compare = {'hash' : type_compare,
                             'ordered' : True}
         default_type_compare = {'hash' : 'full',
                                 'ordered' : True}
