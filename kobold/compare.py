@@ -8,13 +8,17 @@ def acts_like_a_hash(candidate):
     return hasattr(candidate, 'items')
 
 def acts_like_a_list(candidate):
-    return isinstance(candidate, list) or isinstance(candidate, tuple)
+    return (hasattr(candidate, '__iter__') and
+            hasattr(candidate, '__len__'))
 
 def compare(expected, actual, type_compare=None):
     return Compare.compare(
             expected,
             actual,
             type_compare=type_compare)
+
+class NotPresent(object):
+    pass
 
 class DontCare(object):
     def __init__(self,
@@ -64,7 +68,26 @@ class ListDiff(list):
     def append(self, value):
         super(ListDiff, self).append(value)
         self.with_positions.append(value)
-        
+
+
+def get_parsing_hint(rule):
+    class ParsingHint(object):
+        '''Tells the comparison function to parse the 
+           second argument ("actual") in a specific way to
+           get a simple data-structure'''
+
+        def __init__(self, payload):
+            self.payload = payload
+            self.rule = rule
+
+        def parse(self, thing_to_parse):
+            if self.rule == 'json':
+                return json.loads(thing_to_parse)
+            elif self.rule == 'object_dict':
+                return thing_to_parse.__dict__
+
+    return ParsingHint
+
 class Compare(object):
     @classmethod
     def compare(cls,
@@ -103,6 +126,11 @@ class Compare(object):
                 return 'match'
             else:
                 return ('regex: %s' % expected.pattern, actual)
+        elif (expected.__class__.__name__ == 'ParsingHint'):
+            return cls.compare(
+                    expected.payload,
+                    expected.parse(actual),
+                    type_compare)
         else:
             if expected == actual:
                 return 'match'
@@ -163,15 +191,18 @@ class Compare(object):
                              expected,
                              actual,
                              type_compare):
-        if len(expected) != len(actual):
-            return (expected, actual)
-        else:
-            expected_elements = ListDiff()
-            actual_elements = ListDiff()
+        expected_elements = ListDiff()
+        actual_elements = ListDiff()
 
-        for i in range(len(expected)):
-            expected_value = expected[i]
-            actual_value = actual[i]
+        for i in range(max(len(expected), len(actual))):
+            if len(expected) > i:
+                expected_value = expected[i]
+            else:
+                expected_value = NotPresent
+            if len(actual) > i:
+                actual_value = actual[i]
+            else:
+                actual_value = NotPresent
             match = True
             result = cls.compare(expected_value,
                                  actual_value,
