@@ -5,21 +5,39 @@ class StubRoutingException(Exception):
 
 class StubFunction(object):
     def __init__(self, returns=None, raises=None, calls=None, *args, **kwargs):
-        self.returns = returns
-        self.raises = raises
-        self.calls = calls
+        self.to_return = returns
+        self.to_raise = raises
+        self.to_call = calls
+
+    def returns(self, to_return):
+        self.to_return = to_return
+        self.to_raise = None
+        self.to_call = None
+
+    def raises(self, to_raise):
+        self.to_raise = to_raise
+        self.to_return = None
+        self.to_call = None
+
+    def calls(self, to_call):
+        self.to_call = to_call
+        self.to_return = None
+        self.to_raise = None
 
     def __call__(self, *args, **kwargs):
-        if self.raises:
-            raise self.raises
-        elif self.calls:
-            return self.calls(*args, **kwargs)
+        if self.to_raise:
+            raise self.to_raise
+        elif self.to_call:
+            return self.to_call(*args, **kwargs)
         else:
-            return self.returns
+            return self.to_return
 
 class SpyFunction(object):
     def __init__(self, stub_function_factory=StubFunction, *args, **kwargs):
         self.stub_function = stub_function_factory(*args, **kwargs)
+        self.calls = []
+
+    def reset(self):
         self.calls = []
 
     def __call__(self, *args, **kwargs):
@@ -40,6 +58,10 @@ class RoutableStubFunction(object):
         self.routes.append((condition, stub_type, stub_value))
         if condition == 'default':
             self.default_route = ('default', stub_type, stub_value)
+
+    def clear_routes(self):
+        self.routes = []
+        self.default_route = None
 
     def __call__(self, *args, **kwargs):
         candidates = []
