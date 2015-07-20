@@ -100,6 +100,16 @@ class TestStubFunction(unittest.TestCase):
         self.assertEquals(1, stub_function())
 
 class TestSpyFunction(unittest.TestCase):
+    def test_reset(self):
+        spy_function = doubles.SpyFunction(returns=1)
+        self.assertEquals(1, spy_function(1))
+        self.assertEquals(1, spy_function("apple"))
+        self.assertEquals(1, spy_function(keyword="orange"))
+        spy_function.reset()
+
+        self.assertEquals([],
+                          spy_function.calls)
+
     def test_spy(self):
         spy_function = doubles.SpyFunction(returns=1)
         self.assertEquals(1, spy_function(1))
