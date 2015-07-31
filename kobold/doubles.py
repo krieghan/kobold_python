@@ -1,3 +1,4 @@
+import types
 from kobold import compare
 
 class StubRoutingException(Exception):
@@ -43,6 +44,12 @@ class SpyFunction(object):
     def __call__(self, *args, **kwargs):
         self.calls.append((args, kwargs))
         return self.stub_function(*args, **kwargs)
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        else:
+            return types.MethodType(self, instance)
 
 class RoutableStubFunction(object):
     '''A stub that can return different things based on the arguments 

@@ -27,6 +27,15 @@ class TestSwap(unittest.TestCase):
 
         self.assertEqual('original subject', host.subject(arg=1, kwarg=1))
 
+    def test_proxy(self):
+        self.safe_swap.install_proxy(Host, 'subject')
+        host = Host()
+        returned = host.subject('some_arg', kwarg='some_kwarg')
+        self.assertEqual('original subject', returned)
+        self.assertEqual([((host, 'some_arg'), dict(kwarg='some_kwarg'))],
+                         host.subject.calls)
+        
+
         
 
 

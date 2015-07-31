@@ -1,3 +1,5 @@
+from kobold import doubles
+
 class SafeSwap(object):
     def __init__(self):
         self.registry = {}
@@ -15,4 +17,19 @@ class SafeSwap(object):
             self.registry[key] = getattr(host, member_name, None)
 
         setattr(host, member_name, new_member)
+
+    def install_proxy(self,
+                      host,
+                      member_name,
+                      proxy_factory=doubles.SpyFunction,
+                      stub_function_factory=doubles.StubFunction):
+        key = (host, member_name)
+        proxy = proxy_factory(stub_function_factory=stub_function_factory)
+        self.swap(host, member_name, proxy)
+        original_member = self.registry[key]
+        proxy.stub_function.calls(original_member)
+        return proxy
+        
+        
+
 
