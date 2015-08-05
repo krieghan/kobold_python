@@ -51,6 +51,18 @@ class SpyFunction(object):
         else:
             return types.MethodType(self, instance)
 
+def get_spy_class(*methods_to_add):
+
+    class SpyClass(object):
+        pass
+
+    methods_to_add = set(methods_to_add)
+    methods_to_add.add('__init__')
+    for method_name in methods_to_add:
+        setattr(SpyClass, method_name, SpyFunction())
+
+    return SpyClass
+
 class RoutableStubFunction(object):
     '''A stub that can return different things based on the arguments 
        that it's called with.'''
