@@ -104,7 +104,7 @@ class Compare(object):
         type_compare =\
             combine(default_type_compare, type_compare)
 
-        if expected.__class__ == DontCare:
+        if type(expected) == DontCare:
             if expected.compare_with(actual):
                 return 'match'
             else:
@@ -120,13 +120,14 @@ class Compare(object):
             return cls.list_compare(expected, 
                                     actual,
                                     type_compare)
-        elif (expected.__class__ == re._pattern_type and isinstance(actual, basestring)):
+        elif (type(expected) == re._pattern_type and 
+              isinstance(actual, basestring)):
             match = expected.match(actual)
             if match:
                 return 'match'
             else:
                 return ('regex: %s' % expected.pattern, actual)
-        elif (expected.__class__.__name__ == 'ParsingHint'):
+        elif (type(expected).__name__ == 'ParsingHint'):
             return cls.compare(
                     expected.payload,
                     expected.parse(actual),
