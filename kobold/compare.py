@@ -60,6 +60,7 @@ class ListDiff(list):
         super(ListDiff, self).__init__(val)
 
     def display(self):
+        to_display = []
         return self.with_positions
 
     def append_match(self):
@@ -137,6 +138,34 @@ class Compare(object):
                 return 'match'
             else:
                 return (expected, actual)
+
+    @classmethod
+    def display(cls, element, other_element)
+        if type(element) == DontCare:
+            return "dontcare: %s" % expected.rule
+        elif (acts_like_a_hash(element) or acts_like_a_list(element)):
+            return display_iterable(element, other_element)
+        elif type(element) == re._pattern_type:
+            return 'regex: %s' % element.pattern
+        elif type(other_element).__name__ == 'ParsingHint':
+            return cls.display(other_element.parse(element), element.payload)
+        elif type(element).__name__ == 'ParsingHint':
+            return cls.display(element.payload, other_element.parse(element))
+        else:
+            return element
+
+    @classmethod
+    def display_iterable(element_iter, other_element_iter):
+        cls.even_out_lists(element_iter, other_element_iter)
+        return cls.display(
+        for i in range(len(element_iter)):
+            element = element_iter[i]
+            other_element = other_element_iter[i]
+
+            
+
+            
+
 
     @classmethod
     def hash_compare(cls,
@@ -228,6 +257,16 @@ class Compare(object):
                                expected,
                                actual,
                                type_compare):
+        # Make a list of all the indexes of the "expected" list 
+        # and the "actual" list.  
+        # Iterate through the "expected" list.  For each item,
+        # try to find a corresponding match in the "actual" list
+        # (by iterating through that - n^2 style).
+        # If a match is found, remove the corresponding indexes
+        # from the "expected" and "actual" lists.  What we're left
+        # with is two lists of missing indexes (one from the expected,
+        # one from the actual).
+        
         missing_expected_indexes = range(len(expected))
         missing_actual_indexes = range(len(actual))
         expected_index_index = 0
@@ -250,17 +289,63 @@ class Compare(object):
                 actual_index_index += 1
             expected_index_index += 1
 
+       
+        # The remaining elements in the expected and actual
+        # lists (the elements that didn't have a partner in the
+        # other list) are all still "full".  My theory (unsubstantiated)
+        # is that it is more helpful for them to be displayed "diffed".
+        # The question is, diffed with what.  Since this is an unordered
+        # comparison, there's no obviously right answer to that question.
+        # I figure, let's diff the missing elements from the "expected" 
+        # list with the missing elements from the "actual" list in order.
+        # That should at least give us friendlier output.
+        # So, this section gets us the ordered diffs of the remaining
+        # elements
+        max_len = max(len(expected), len(actual))
+        diffed_expecteds = [None] * max_len
+        diffed_actuals = [None] * max_len
+
+        for i in range(max(len(missing_expected_indexes),
+                           len(missing_actual_indexes))):
+            if i < len(missing_expected_indexes):
+                missing_expected_index = missing_expected_indexes[i]
+                missing_expected = expected[missing_expected_index]
+            else:
+                missing_expected_index = None
+                missing_expected = NotPresent
+
+            if i < len(missing_actual_indexes):
+                missing_actual_index = missing_actual_indexes[i]
+                missing_actual = actual[missing_actual_index]
+            else:
+                missing_actual_index = None
+                missing_actual = NotPresent
+
+            displayed_expected = cls.display(missing_expected)
+            displayed_actual = cls.display(missing_actual)
+
+
+            if missing_expected_index is not None:
+                diffed_expecteds[missing_expected_index] = diffed_expected
+
+            if missing_actual_index is not None:
+                diffed_actuals[missing_actual_index] = diffed_actual
+
+        # For each element of the expected and actual lists,
+        # if there was a match, just append the "match" character
+        # (_).  If there wasn't a match, append the in-order diff
+        # from above.
         expected_return = ListDiff()
         actual_return = ListDiff()
         for i in range(len(expected)):
             if i in missing_expected_indexes:
-                expected_return.append(expected[i])
+                expected_return.append(diffed_expecteds[i])
             else:
                 expected_return.append_match()
 
         for j in range(len(actual)):
             if j in missing_actual_indexes:
-                actual_return.append(actual[j])
+                actual_return.append(diffed_actuals[j])
             else:
                 actual_return.append_match()
 

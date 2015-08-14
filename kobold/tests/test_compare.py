@@ -5,10 +5,9 @@ JsonParsingHint = compare.get_parsing_hint('json')
 ObjectDictParsingHint = compare.get_parsing_hint('object_dict')
 
 class ObjectThing(object):
-    def __init__(self, a=1, b=2, c=3):
-        self.a = a
-        self.b = b
-        self.c = c
+    def __init__(self, **kwargs):
+        for key, value in kwargs.iteritems():
+            setattr(self, key, value)
 
 class TestCompare(unittest.TestCase):
     def test_empty_hashes(self):
@@ -129,5 +128,54 @@ class TestCompare(unittest.TestCase):
                 compare.compare(
                     [ObjectDictParsingHint(expected)],
                     actual))
+    
+    def test_list_of_objects_unordered(self):
+        expected = [
+                ObjectDictParsingHint({'a' : 1}),
+                ObjectDictParsingHint({'a' : 2}),
+                ObjectDictParsingHint({'a' : 3})]
+        actual = [
+                ObjectThing(a=4),
+                ObjectThing(a=5),
+                ObjectThing(a=6)]
 
-   
+        self.assertEqual(
+                ([{'a' : 1}, {'a' : 2}, {'a' : 3}], 
+                 [{'a' : 4}, {'a' : 5}, {'a' : 6}]),
+                compare.compare(
+                    expected, 
+                    actual,
+                    type_compare={'hash' : 'existing',
+                                  'ordered' : False}))
+
+    def test_unordered_comparison_object_dict_one_item(self):
+        expected = [
+                ObjectDictParsingHint(
+                    dict(a=1, b=2, c=3, d=4, e=5))]
+        actual = [
+                ObjectThing(a=1, b=3, c=3, d=4, e=5)]
+        self.assertEqual(
+                ([{'b' : 2}], [{'b' : 3}]),
+                compare.compare(
+                    expected,
+                    actual,
+                    type_compare={'hash' : 'existing',
+                                  'ordered' : False}))
+
+    def test_1(self):
+        expected = [
+                ObjectDictParsingHint(dict(a=1, b=2)),
+                ObjectDictParsingHint(dict(a=2, b=3)),
+                ObjectDictParsingHint(dict(a=3, b=4))]
+        actual = [ObjectThing(a=2, b=3),
+                  ObjectThing(a=2, b=1),
+                  ObjectThing(a=3, b=2)]
+        self.assertEqual(
+                'match',
+                compare.compare(
+                    expected,
+                    actual,
+                    type_compare={'hash' : 'existing',
+                                  'ordered' : False}))
+
+
