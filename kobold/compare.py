@@ -140,34 +140,6 @@ class Compare(object):
                 return (expected, actual)
 
     @classmethod
-    def display(cls, element, other_element)
-        if type(element) == DontCare:
-            return "dontcare: %s" % expected.rule
-        elif (acts_like_a_hash(element) or acts_like_a_list(element)):
-            return display_iterable(element, other_element)
-        elif type(element) == re._pattern_type:
-            return 'regex: %s' % element.pattern
-        elif type(other_element).__name__ == 'ParsingHint':
-            return cls.display(other_element.parse(element), element.payload)
-        elif type(element).__name__ == 'ParsingHint':
-            return cls.display(element.payload, other_element.parse(element))
-        else:
-            return element
-
-    @classmethod
-    def display_iterable(element_iter, other_element_iter):
-        cls.even_out_lists(element_iter, other_element_iter)
-        return cls.display(
-        for i in range(len(element_iter)):
-            element = element_iter[i]
-            other_element = other_element_iter[i]
-
-            
-
-            
-
-
-    @classmethod
     def hash_compare(cls,
                      expected,
                      actual,
@@ -302,8 +274,8 @@ class Compare(object):
         # So, this section gets us the ordered diffs of the remaining
         # elements
         max_len = max(len(expected), len(actual))
-        diffed_expecteds = [None] * max_len
-        diffed_actuals = [None] * max_len
+        displayed_expecteds = [None] * max_len
+        displayed_actuals = [None] * max_len
 
         for i in range(max(len(missing_expected_indexes),
                            len(missing_actual_indexes))):
@@ -321,15 +293,19 @@ class Compare(object):
                 missing_actual_index = None
                 missing_actual = NotPresent
 
-            displayed_expected = cls.display(missing_expected)
-            displayed_actual = cls.display(missing_actual)
+            displayed_expected = cls.display(
+                    missing_expected,
+                    missing_actual)
+            displayed_actual = cls.display(
+                    missing_actual,
+                    missing_expected)
 
 
             if missing_expected_index is not None:
-                diffed_expecteds[missing_expected_index] = diffed_expected
+                displayed_expecteds[missing_expected_index] = displayed_expected
 
             if missing_actual_index is not None:
-                diffed_actuals[missing_actual_index] = diffed_actual
+                displayed_actuals[missing_actual_index] = displayed_actual
 
         # For each element of the expected and actual lists,
         # if there was a match, just append the "match" character
@@ -339,13 +315,13 @@ class Compare(object):
         actual_return = ListDiff()
         for i in range(len(expected)):
             if i in missing_expected_indexes:
-                expected_return.append(diffed_expecteds[i])
+                expected_return.append(displayed_expecteds[i])
             else:
                 expected_return.append_match()
 
         for j in range(len(actual)):
             if j in missing_actual_indexes:
-                actual_return.append(diffed_actuals[j])
+                actual_return.append(displayed_actuals[j])
             else:
                 actual_return.append_match()
 
@@ -375,4 +351,47 @@ class Compare(object):
             return cls.unordered_list_compare(expected,
                                               actual,
                                               type_compare)
+    @classmethod
+    def display(cls, element, other_element):
+        if type(element) == DontCare:
+            return "dontcare: %s" % expected.rule
+        elif acts_like_a_hash(element) and acts_like_a_hash(other_element):
+            return cls.display_hash(element, other_element)
+        elif acts_like_a_list(element) and acts_like_a_list(other_element):
+            return cls.display_list(element, other_element)
+        elif type(element) == re._pattern_type:
+            return 'regex: %s' % element.pattern
+        elif type(other_element).__name__ == 'ParsingHint':
+            return cls.display(other_element.parse(element), other_element.payload)
+        elif type(element).__name__ == 'ParsingHint':
+            return cls.display(element.payload, element.parse(element))
+        else:
+            return element
+
+    @classmethod
+    def display_hash(cls, one_hash, other_hash):
+        display_hash = {}
+        for key in one_hash.keys():
+            display_hash[key] = cls.display(one_hash.get(key), other_hash.get(key))
+
+        return display_hash
+
+    @classmethod
+    def display_list(cls, one_list, other_list):
+        max_len = max(len(one_list), len(other_list))
+        display_list = []
+
+        for i in range(max_len):
+            if i > len(one_list):
+                element = NotPresent
+            else:
+                element = one_list[i]
+
+            if i > len(other_list):
+                other_element = NotPresent
+            else:
+                other_element = other_list[i]
+
+            display_list.append(cls.display(element, other_element))
+
 

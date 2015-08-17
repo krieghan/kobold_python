@@ -140,7 +140,7 @@ class TestCompare(unittest.TestCase):
                 ObjectThing(a=6)]
 
         self.assertEqual(
-                ([{'a' : 1}, {'a' : 2}, {'a' : 3}], 
+                ([{'a' : 1}, {'a' : 2}, {'a' : 3}],
                  [{'a' : 4}, {'a' : 5}, {'a' : 6}]),
                 compare.compare(
                     expected, 
@@ -155,14 +155,15 @@ class TestCompare(unittest.TestCase):
         actual = [
                 ObjectThing(a=1, b=3, c=3, d=4, e=5)]
         self.assertEqual(
-                ([{'b' : 2}], [{'b' : 3}]),
+                ([dict(a=1, b=2, c=3, d=4, e=5)],
+                 [dict(a=1, b=3, c=3, d=4, e=5)]),
                 compare.compare(
                     expected,
                     actual,
                     type_compare={'hash' : 'existing',
                                   'ordered' : False}))
 
-    def test_1(self):
+    def test_unordered_comparison_object_dict_multiple_items(self):
         expected = [
                 ObjectDictParsingHint(dict(a=1, b=2)),
                 ObjectDictParsingHint(dict(a=2, b=3)),
@@ -171,7 +172,8 @@ class TestCompare(unittest.TestCase):
                   ObjectThing(a=2, b=1),
                   ObjectThing(a=3, b=2)]
         self.assertEqual(
-                'match',
+                ([dict(a=1, b=2), '_', dict(a=3, b=4)],
+                 ['_', dict(a=2, b=1), dict(a=3, b=2)]),
                 compare.compare(
                     expected,
                     actual,
