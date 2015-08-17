@@ -351,6 +351,9 @@ class Compare(object):
             return cls.unordered_list_compare(expected,
                                               actual,
                                               type_compare)
+
+    # These "display" functions are used by the unordered list comparison
+    # for intelligently displaying unordered diffs of lists
     @classmethod
     def display(cls, element, other_element):
         if type(element) == DontCare:
