@@ -180,4 +180,12 @@ class TestCompare(unittest.TestCase):
                     type_compare={'hash' : 'existing',
                                   'ordered' : False}))
 
+    def test_two_sets(self):
+        expected = set([1, 2, 3])
+        actual = set([1, 3, 4])
+        self.assertEqual(
+            (set([2]), set([4])),
+            compare.compare(expected, actual))
+
+
 

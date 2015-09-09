@@ -340,17 +340,33 @@ class Compare(object):
         default_type_compare =\
             {'hash' : 'full',
              'ordered' : True}
+
         type_compare =\
             combine(default_type_compare, type_compare)
 
-        if type_compare['ordered']:
-            return cls.ordered_list_compare(expected,
+        if type(expected) == set and type(actual) == set:
+            isset = True
+            expected = list(expected)
+            actual = list(actual)
+        else:
+            isset = False
+
+        if type_compare['ordered'] and not isset:
+            ret = cls.ordered_list_compare(expected,
                                             actual,
                                             type_compare)
         else:
-            return cls.unordered_list_compare(expected,
+            ret = cls.unordered_list_compare(expected,
                                               actual,
                                               type_compare)
+        if ret == 'match' or not isset:
+            return ret
+        else:
+            ret_exp, ret_act = ret
+            ret_exp = [x for x in ret_exp if x != '_']
+            ret_act = [x for x in ret_act if x != '_']
+            return (set(ret_exp), set(ret_act))
+
 
     # These "display" functions are used by the unordered list comparison
     # for intelligently displaying unordered diffs of lists
