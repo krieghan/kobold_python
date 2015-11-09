@@ -52,16 +52,17 @@ class DontCare(object):
             return True
         
 class ListDiff(list):
-    def __init__(self, arr=None):
+    def __init__(self, arr=None, display_type=list):
         if arr is None:
             arr = []
         self.with_positions = arr
+        self.display_type = display_type
         val = [x for x in arr if x != '_']
         super(ListDiff, self).__init__(val)
 
     def display(self):
         to_display = []
-        return self.with_positions
+        return self.display_type(self.with_positions)
 
     def append_match(self):
         self.with_positions.append('_')
@@ -116,11 +117,17 @@ class Compare(object):
             return cls.hash_compare(expected, 
                                     actual, 
                                     type_compare)
+        elif (isinstance(expected, tuple) and isinstance(actual, tuple)):
+            return cls.list_compare(expected,
+                                    actual,
+                                    type_compare,
+                                    iter_type=tuple)
         elif (acts_like_a_list(expected) and 
               acts_like_a_list(actual)):
             return cls.list_compare(expected, 
                                     actual,
-                                    type_compare)
+                                    type_compare,
+                                    iter_type=list)
         elif (type(expected) == re._pattern_type and 
               isinstance(actual, basestring)):
             match = expected.match(actual)
@@ -192,9 +199,10 @@ class Compare(object):
     def ordered_list_compare(cls,
                              expected,
                              actual,
-                             type_compare):
-        expected_elements = ListDiff()
-        actual_elements = ListDiff()
+                             type_compare,
+                             iter_type=list):
+        expected_elements = ListDiff(display_type=iter_type)
+        actual_elements = ListDiff(display_type=iter_type)
 
         for i in range(max(len(expected), len(actual))):
             if len(expected) > i:
@@ -228,7 +236,8 @@ class Compare(object):
     def unordered_list_compare(cls,
                                expected,
                                actual,
-                               type_compare):
+                               type_compare,
+                               iter_type=list):
         # Make a list of all the indexes of the "expected" list 
         # and the "actual" list.  
         # Iterate through the "expected" list.  For each item,
@@ -311,8 +320,8 @@ class Compare(object):
         # if there was a match, just append the "match" character
         # (_).  If there wasn't a match, append the in-order diff
         # from above.
-        expected_return = ListDiff()
-        actual_return = ListDiff()
+        expected_return = ListDiff(display_type=iter_type)
+        actual_return = ListDiff(display_type=iter_type)
         for i in range(len(expected)):
             if i in missing_expected_indexes:
                 expected_return.append(displayed_expecteds[i])
@@ -336,7 +345,8 @@ class Compare(object):
     def list_compare(cls,
                      expected,
                      actual,
-                     type_compare):
+                     type_compare,
+                     iter_type=list):
         default_type_compare =\
             {'hash' : 'full',
              'ordered' : True}
@@ -353,12 +363,14 @@ class Compare(object):
 
         if type_compare['ordered'] and not isset:
             ret = cls.ordered_list_compare(expected,
-                                            actual,
-                                            type_compare)
+                                           actual,
+                                           type_compare,
+                                           iter_type=iter_type)
         else:
             ret = cls.unordered_list_compare(expected,
-                                              actual,
-                                              type_compare)
+                                             actual,
+                                             type_compare,
+                                             iter_type=iter_type)
         if ret == 'match' or not isset:
             return ret
         else:
@@ -376,8 +388,10 @@ class Compare(object):
             return "dontcare: %s" % expected.rule
         elif acts_like_a_hash(element) and acts_like_a_hash(other_element):
             return cls.display_hash(element, other_element)
+        elif isinstance(element, tuple) and isinstance(other_element, tuple):
+            return cls.display_list(element, other_element, iter_type=tuple)
         elif acts_like_a_list(element) and acts_like_a_list(other_element):
-            return cls.display_list(element, other_element)
+            return cls.display_list(element, other_element, iter_type=list)
         elif type(element) == re._pattern_type:
             return 'regex: %s' % element.pattern
         elif type(other_element).__name__ == 'ParsingHint':
@@ -396,7 +410,7 @@ class Compare(object):
         return display_hash
 
     @classmethod
-    def display_list(cls, one_list, other_list):
+    def display_list(cls, one_list, other_list, iter_type=list):
         max_len = max(len(one_list), len(other_list))
         display_list = []
 
@@ -412,5 +426,6 @@ class Compare(object):
                 other_element = other_list[i]
 
             display_list.append(cls.display(element, other_element))
+        return iter_type(display_list)
 
 

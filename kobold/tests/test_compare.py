@@ -188,4 +188,48 @@ class TestCompare(unittest.TestCase):
             compare.compare(expected, actual))
 
 
+    def test_tuples(self):
+        expected = (1, 2, 3, 4)
+        actual = (1, 2, 4, 4)
+        self.assertEqual(
+            (('_', '_', 3, '_'), ('_', '_', 4, '_')),
+            compare.compare(expected, actual))
+
+    def test_list_of_tuples(self):
+        expected = [(1, 2), (3, 4), (5, 6)]
+        actual = [(1, 2), (3, 5), (5, 6)]
+        self.assertEqual(
+            (['_', ('_', 4), '_'], ['_', ('_', 5), '_']),
+            compare.compare(expected, actual))
+
+    def test_tuple_of_tuples(self):
+        expected = ((1, 2), (3, 4), (5, 6))
+        actual = ((1, 2), (3, 5), (5, 6))
+        self.assertEqual(
+            (('_', ('_', 4), '_'), ('_', ('_', 5), '_')),
+            compare.compare(expected, actual))
+
+    def test_tuple_of_lists(self):
+        expected = ([1, 2], [3, 4], [5, 6])
+        actual = ([1, 2], [3, 5], [5, 6])
+        self.assertEqual(
+            (('_', ['_', 4], '_'), ('_', ['_', 5], '_')),
+            compare.compare(expected, actual))
+
+    def test_sets_of_distinct_tuples(self):
+        expected = set([(1, 2)])
+        actual = set([(3, 4)])
+        self.assertEqual(
+            (set([(1, 2)]), set([(3, 4)])),
+            compare.compare(expected, actual))
+
+    def test_sets_of_intersecting_tuples(self):
+        expected = set([(1, 2)])
+        actual = set([(2, 3)])
+        self.assertEqual(
+            (set([(1, 2)]), set([(2, 3)])),
+            compare.compare(
+                expected, 
+                actual,
+                type_compare={'ordered' : False}))
 
