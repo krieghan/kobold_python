@@ -119,3 +119,17 @@ class TestSpyFunction(unittest.TestCase):
         self.assertEquals([((1,), {}), (("apple",), {}), ((), {'keyword' : 'orange'})],
                           spy_function.calls)
 
+
+class TestRoutableSpyFunction(unittest.TestCase):
+    def test_delegation(self):
+        spy_function = doubles.SpyFunction(
+                stub_function_factory=doubles.RoutableStubFunction)
+        spy_function.add_route(
+                condition=(1, 1),
+                stub_type='value',
+                stub_value=1)
+        self.assertEquals(1, spy_function(1, 1))
+        self.assertRaises(doubles.StubRoutingException,
+                          spy_function,
+                          1, 2)
+        self.assertEquals([((1, 1), {}), ((1, 2), {})], spy_function.calls)

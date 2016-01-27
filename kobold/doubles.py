@@ -51,6 +51,12 @@ class SpyFunction(object):
         else:
             return types.MethodType(self, instance)
 
+    def __getattr__(self, attr):
+        try:
+            return super(SpyFunction, self).__getattr__(attr)
+        except AttributeError:
+            return getattr(self.stub_function, attr)
+
 def get_spy_class(*methods_to_add):
 
     class SpyClass(object):
@@ -128,6 +134,4 @@ class RoutableStubFunction(object):
 
         if stub_type == 'exception':
             raise stub_value
-
-
 
