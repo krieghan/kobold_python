@@ -57,17 +57,21 @@ class SpyFunction(object):
         except AttributeError:
             return getattr(self.stub_function, attr)
 
-def get_spy_class(*methods_to_add):
+def get_stub_class(methods_to_add):
+    class StubClass(object):
+        def __init__(self, *args, **kwargs):
+            pass
 
-    class SpyClass(object):
-        pass
+    if isinstance(methods_to_add, dict):
+        for (method_name, return_value) in methods_to_add.iteritems():
+            spy_function = SpyFunction(returns=return_value)
+            setattr(StubClass, method_name, spy_function)
+    elif isinstance(methods_to_add, list):
+        for method_name in methods_to_add:
+            setattr(StubClass, method_name, SpyFunction(returns=None))
 
-    methods_to_add = set(methods_to_add)
-    methods_to_add.add('__init__')
-    for method_name in methods_to_add:
-        setattr(SpyClass, method_name, SpyFunction())
-
-    return SpyClass
+    return StubClass
+                
 
 class RoutableStubFunction(object):
     '''A stub that can return different things based on the arguments 
