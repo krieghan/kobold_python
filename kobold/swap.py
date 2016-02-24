@@ -8,6 +8,12 @@ class SafeSwap(object):
         for ((host, member_name), original_member) in self.registry.items():
             setattr(host, member_name, original_member)
 
+    def unswap(self, host, member_name):
+        key = (host, member_name)
+        original_member = self.registry[key]
+        setattr(host, member_name, original_member)
+        del self.registry[key]
+
     def swap(self, 
              host,
              member_name,
