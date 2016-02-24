@@ -88,6 +88,7 @@ def get_parsing_hint(rule):
             elif self.rule == 'object_dict':
                 return thing_to_parse.__dict__
 
+
     return ParsingHint
 
 class Compare(object):
@@ -178,11 +179,11 @@ class Compare(object):
         for key in keys:
             if key in type_compare['dontcare_keys']:
                 result = cls.compare(DontCare(), 
-                                     actual.get(key),
+                                     actual.get(key, NotPresent),
                                      type_compare)
             else:
-                result = cls.compare(expected.get(key),
-                                     actual.get(key),
+                result = cls.compare(expected.get(key, NotPresent),
+                                     actual.get(key, NotPresent),
                                      type_compare)
 
             if result != 'match':

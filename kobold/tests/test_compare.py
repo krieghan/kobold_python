@@ -18,14 +18,14 @@ class TestCompare(unittest.TestCase):
 
     def test_distinct_keys(self):
         self.assertEqual(
-                ({'a' : 1, 'b' : None}, {'a' : None, 'b' : 2}), 
+                ({'a' : 1, 'b' : compare.NotPresent}, {'a' : compare.NotPresent, 'b' : 2}), 
                 compare.compare(
                     {'a' : 1}, 
                     {'b' : 2}))
 
     def test_distinct_keys_only_existing(self):
         self.assertEqual(
-                ({'a' : 1}, {'a' : None}), 
+                ({'a' : 1}, {'a' : compare.NotPresent}), 
                 compare.compare(
                     {'a' : 1}, 
                     {'b' : 2},
@@ -33,7 +33,7 @@ class TestCompare(unittest.TestCase):
 
     def test_intersecting_keys(self):
         self.assertEqual(
-                ({'a' : 1, 'c' : None}, {'a' : None, 'c' : 3}),
+                ({'a' : 1, 'c' : compare.NotPresent}, {'a' : compare.NotPresent, 'c' : 3}),
                 compare.compare(
                     {'a' : 1, 'b' : 2},
                     {'b' : 2, 'c' : 3}))
@@ -232,4 +232,14 @@ class TestCompare(unittest.TestCase):
                 expected, 
                 actual,
                 type_compare={'ordered' : False}))
+
+    def test_compare_none_with_not_present(self):
+        expected = {}
+        actual = {'a' : None}
+        self.assertEqual(
+                ({'a' : compare.NotPresent}, {'a' : None}),
+                compare.compare(
+                    expected,
+                    actual,
+                    type_compare='full'))
 
