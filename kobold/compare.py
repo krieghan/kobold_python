@@ -86,6 +86,8 @@ def get_parsing_hint(rule):
             if self.rule == 'json':
                 return json.loads(thing_to_parse)
             elif self.rule == 'object_dict':
+                if thing_to_parse is NotPresent:
+                    return NotPresent
                 return thing_to_parse.__dict__
 
 

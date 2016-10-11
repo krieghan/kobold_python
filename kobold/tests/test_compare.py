@@ -111,6 +111,15 @@ class TestCompare(unittest.TestCase):
                     ObjectDictParsingHint(expected),
                     actual))
 
+    def test_compare_notpresent_with_object_dict(self):
+        expected = {'a' : 1, 'b' : 2, 'c' : 3}
+        self.assertEqual(
+                ({'a' : 1, 'b' : 2, 'c' : 3},
+                 compare.NotPresent),
+                compare.compare(
+                    ObjectDictParsingHint(expected),
+                    compare.NotPresent))
+
     def test_compare_dict_with_object_dict_mismatch(self):
         expected = {'a' : 1, 'b' : 2, 'c' : 4}
         actual = ObjectThing(a=1, b=2, c=3)

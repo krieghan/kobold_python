@@ -57,10 +57,18 @@ class SpyFunction(object):
         except AttributeError:
             return getattr(self.stub_function, attr)
 
-def get_stub_class(methods_to_add):
+def get_stub_class(methods_to_add, is_callable=False):
     class StubClass(object):
         def __init__(self, *args, **kwargs):
-            pass
+            for name, value in kwargs.iteritems():
+                setattr(self, name, value)
+
+            if is_callable:
+                self.calls = []
+
+        if is_callable:
+            def __call__(self, *args, **kwargs):
+                self.calls.append((args, kwargs))
 
     if isinstance(methods_to_add, dict):
         for (method_name, return_value) in methods_to_add.iteritems():
