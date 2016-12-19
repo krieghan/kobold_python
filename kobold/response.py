@@ -1,5 +1,6 @@
 import json
-from compare import compare
+
+from kobold.compare import compare
 
 def parse_body(content_type, content):
     if content_type == 'application/json':

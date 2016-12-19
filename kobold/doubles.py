@@ -60,7 +60,7 @@ class SpyFunction(object):
 def get_stub_class(methods_to_add, is_callable=False):
     class StubClass(object):
         def __init__(self, *args, **kwargs):
-            for name, value in kwargs.iteritems():
+            for name, value in kwargs.items():
                 setattr(self, name, value)
 
             if is_callable:
@@ -71,7 +71,7 @@ def get_stub_class(methods_to_add, is_callable=False):
                 self.calls.append((args, kwargs))
 
     if isinstance(methods_to_add, dict):
-        for (method_name, return_value) in methods_to_add.iteritems():
+        for (method_name, return_value) in methods_to_add.items():
             spy_function = SpyFunction(returns=return_value)
             setattr(StubClass, method_name, spy_function)
     elif isinstance(methods_to_add, list):

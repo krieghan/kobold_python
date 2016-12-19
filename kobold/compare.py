@@ -1,15 +1,18 @@
-import re
 import json
+import re
+import six
+
 from dateutil import parser
 
-from hash_functions import combine
+from kobold.hash_functions import combine
 
 def acts_like_a_hash(candidate):
     return hasattr(candidate, 'items')
 
 def acts_like_a_list(candidate):
-    return (hasattr(candidate, '__iter__') and
-            hasattr(candidate, '__len__'))
+    return (hasattr(candidate, '__iter__') and 
+            hasattr(candidate, '__len__') and
+            not isinstance(candidate, six.string_types))
 
 def compare(expected, actual, type_compare=None):
     return Compare.compare(
@@ -90,7 +93,6 @@ def get_parsing_hint(rule):
                     return NotPresent
                 return thing_to_parse.__dict__
 
-
     return ParsingHint
 
 class Compare(object):
@@ -115,6 +117,18 @@ class Compare(object):
             else:
                 return ("dontcare: %s" % expected.rule,
                         actual)
+        elif (type(expected) == re._pattern_type and 
+              isinstance(actual, six.string_types)):
+            match = expected.match(actual)
+            if match:
+                return 'match'
+            else:
+                return ('regex: %s' % expected.pattern, actual)
+        elif (type(expected).__name__ == 'ParsingHint'):
+            return cls.compare(
+                    expected.payload,
+                    expected.parse(actual),
+                    type_compare)
         elif (acts_like_a_hash(expected) and 
               acts_like_a_hash(actual)):
             return cls.hash_compare(expected, 
@@ -131,18 +145,7 @@ class Compare(object):
                                     actual,
                                     type_compare,
                                     iter_type=list)
-        elif (type(expected) == re._pattern_type and 
-              isinstance(actual, basestring)):
-            match = expected.match(actual)
-            if match:
-                return 'match'
-            else:
-                return ('regex: %s' % expected.pattern, actual)
-        elif (type(expected).__name__ == 'ParsingHint'):
-            return cls.compare(
-                    expected.payload,
-                    expected.parse(actual),
-                    type_compare)
+
         else:
             if expected == actual:
                 return 'match'
@@ -160,7 +163,7 @@ class Compare(object):
              'ordered' : True}
         type_compare =\
             combine(default_type_compare, type_compare)
-        if expected.has_key('__compare'):
+        if '__compare' in expected:
             compare_override = expected['__compare']
             if acts_like_a_hash(compare_override):
                 type_compare = combine(default_type_compare, compare_override)
@@ -251,8 +254,8 @@ class Compare(object):
         # with is two lists of missing indexes (one from the expected,
         # one from the actual).
         
-        missing_expected_indexes = range(len(expected))
-        missing_actual_indexes = range(len(actual))
+        missing_expected_indexes = list(range(len(expected)))
+        missing_actual_indexes = list(range(len(actual)))
         expected_index_index = 0
         while expected_index_index < len(missing_expected_indexes):
             expected_index = missing_expected_indexes[expected_index_index]

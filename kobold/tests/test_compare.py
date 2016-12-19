@@ -6,7 +6,7 @@ ObjectDictParsingHint = compare.get_parsing_hint('object_dict')
 
 class ObjectThing(object):
     def __init__(self, **kwargs):
-        for key, value in kwargs.iteritems():
+        for key, value in kwargs.items():
             setattr(self, key, value)
 
 class TestCompare(unittest.TestCase):

@@ -1,5 +1,5 @@
-from response import response_matches
-from compare import compare
+from kobold.response import response_matches
+from kobold.compare import compare
 
 def assert_response_matches(expected,
                             response,

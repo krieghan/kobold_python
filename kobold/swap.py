@@ -19,7 +19,7 @@ class SafeSwap(object):
              member_name,
              new_member):
         key = (host, member_name)
-        if not self.registry.has_key(key):
+        if not key in self.registry:
             self.registry[key] = getattr(host, member_name, None)
 
         setattr(host, member_name, new_member)
