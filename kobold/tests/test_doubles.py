@@ -93,30 +93,30 @@ class TestStubFunction(unittest.TestCase):
 
     def test_calls(self):
         stub_function = doubles.StubFunction(calls=test_function)
-        self.assertEquals('test_function', stub_function())
+        self.assertEqual('test_function', stub_function())
 
     def test_returns(self):
         stub_function = doubles.StubFunction(returns=1)
-        self.assertEquals(1, stub_function())
+        self.assertEqual(1, stub_function())
 
 class TestSpyFunction(unittest.TestCase):
     def test_reset(self):
         spy_function = doubles.SpyFunction(returns=1)
-        self.assertEquals(1, spy_function(1))
-        self.assertEquals(1, spy_function("apple"))
-        self.assertEquals(1, spy_function(keyword="orange"))
+        self.assertEqual(1, spy_function(1))
+        self.assertEqual(1, spy_function("apple"))
+        self.assertEqual(1, spy_function(keyword="orange"))
         spy_function.reset()
 
-        self.assertEquals([],
+        self.assertEqual([],
                           spy_function.calls)
 
     def test_spy(self):
         spy_function = doubles.SpyFunction(returns=1)
-        self.assertEquals(1, spy_function(1))
-        self.assertEquals(1, spy_function("apple"))
-        self.assertEquals(1, spy_function(keyword="orange"))
+        self.assertEqual(1, spy_function(1))
+        self.assertEqual(1, spy_function("apple"))
+        self.assertEqual(1, spy_function(keyword="orange"))
 
-        self.assertEquals([((1,), {}), (("apple",), {}), ((), {'keyword' : 'orange'})],
+        self.assertEqual([((1,), {}), (("apple",), {}), ((), {'keyword' : 'orange'})],
                           spy_function.calls)
 
 
@@ -128,8 +128,8 @@ class TestRoutableSpyFunction(unittest.TestCase):
                 condition=(1, 1),
                 stub_type='value',
                 stub_value=1)
-        self.assertEquals(1, spy_function(1, 1))
+        self.assertEqual(1, spy_function(1, 1))
         self.assertRaises(doubles.StubRoutingException,
                           spy_function,
                           1, 2)
-        self.assertEquals([((1, 1), {}), ((1, 2), {})], spy_function.calls)
+        self.assertEqual([((1, 1), {}), ((1, 2), {})], spy_function.calls)

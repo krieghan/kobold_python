@@ -5,7 +5,7 @@ class SafeSwap(object):
         self.registry = {}
 
     def rollback(self):
-        for ((host, member_name), original_member) in self.registry.items():
+        for ((host_name, member_name), (host, original_member)) in self.registry.items():
             setattr(host, member_name, original_member)
 
     def unswap(self, host, member_name):
@@ -18,9 +18,9 @@ class SafeSwap(object):
              host,
              member_name,
              new_member):
-        key = (host, member_name)
+        key = (str(host), member_name)
         if not key in self.registry:
-            self.registry[key] = getattr(host, member_name, None)
+            self.registry[key] = (host, getattr(host, member_name, None))
 
         setattr(host, member_name, new_member)
 
@@ -29,10 +29,10 @@ class SafeSwap(object):
                       member_name,
                       proxy_factory=doubles.SpyFunction,
                       stub_function_factory=doubles.StubFunction):
-        key = (host, member_name)
+        key = (str(host), member_name)
         proxy = proxy_factory(stub_function_factory=stub_function_factory)
         self.swap(host, member_name, proxy)
-        original_member = self.registry[key]
+        (host, original_member) = self.registry[key]
         proxy.stub_function.calls(original_member)
         return proxy
         
