@@ -9,7 +9,7 @@ class SafeSwap(object):
             setattr(host, member_name, original_member)
 
     def unswap(self, host, member_name):
-        key = (host, member_name)
+        key = self.get_key(host, member_name)
         original_member = self.registry[key]
         setattr(host, member_name, original_member)
         del self.registry[key]
@@ -18,18 +18,23 @@ class SafeSwap(object):
              host,
              member_name,
              new_member):
-        key = (str(host), member_name)
+        key = self.get_key(host, member_name)
         if not key in self.registry:
             self.registry[key] = (host, getattr(host, member_name, None))
 
         setattr(host, member_name, new_member)
+
+    def get_key(self,
+                host,
+                member_name):
+        return (id(host), member_name)
 
     def install_proxy(self,
                       host,
                       member_name,
                       proxy_factory=doubles.SpyFunction,
                       stub_function_factory=doubles.StubFunction):
-        key = (str(host), member_name)
+        key = self.get_key(host, member_name)
         proxy = proxy_factory(stub_function_factory=stub_function_factory)
         self.swap(host, member_name, proxy)
         (host, original_member) = self.registry[key]
