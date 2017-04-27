@@ -4,6 +4,11 @@ from kobold.compare import compare
 def assert_response_matches(expected,
                             response,
                             type_compare=None):
+    '''
+    If the responses don't match (in the kobold.compare sense),
+    raise an AssertionError
+    '''
+
     if type_compare is None:
         type_compare = {}
     result = response_matches(expected,
@@ -15,6 +20,11 @@ def assert_equal(
         expected, 
         actual, 
         type_compare=None):
+    '''
+    If two data structures don't match (in the kobold.compare sense),
+    raise an AssertionError
+    '''
+
     if type_compare is None:
         type_compare = {}
     result = compare(expected, 

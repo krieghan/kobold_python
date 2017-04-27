@@ -1,46 +1,61 @@
 from kobold import doubles
 
 class SafeSwap(object):
+    '''Instances of this class manage runtime replacements of members,
+       and enable all replacements to be undone with the rollback method'''
+       
+       
     def __init__(self):
         self.registry = {}
-
-    def rollback(self):
-        for ((host_name, member_name), (host, original_member)) in self.registry.items():
-            setattr(host, member_name, original_member)
-
-    def unswap(self, host, member_name):
-        key = self.get_key(host, member_name)
-        original_member = self.registry[key]
-        setattr(host, member_name, original_member)
-        del self.registry[key]
 
     def swap(self, 
              host,
              member_name,
              new_member):
+        '''Given a host object, a member name, and some other object,
+           replace the member of that name on that host with the given object.
+           This can be undone with rollback()'''
         key = self.get_key(host, member_name)
         if not key in self.registry:
             self.registry[key] = (host, getattr(host, member_name, None))
 
         setattr(host, member_name, new_member)
 
-    def get_key(self,
-                host,
-                member_name):
-        return (id(host), member_name)
-
     def install_proxy(self,
                       host,
                       member_name,
                       proxy_factory=doubles.SpyFunction,
                       stub_function_factory=doubles.StubFunction):
+        '''Replace a member with a function that does something else,
+           and then calls that original member (this is very similar
+           to the idea of dynamically decorating a function at runtime, 
+           except that the decoration will be undone when rollback is called.
+
+           Typically, the idea here is to inject a spy in front of the
+           original functionality.  So, the function will have the same
+           result as it would without this replacement, except the spy remembers
+           each call.'''
         key = self.get_key(host, member_name)
         proxy = proxy_factory(stub_function_factory=stub_function_factory)
         self.swap(host, member_name, proxy)
         (host, original_member) = self.registry[key]
         proxy.stub_function.calls(original_member)
         return proxy
-        
-        
 
+    def unswap(self, host, member_name):
+        '''Rollback a specific replacement'''
+        key = self.get_key(host, member_name)
+        original_member = self.registry[key]
+        setattr(host, member_name, original_member)
+        del self.registry[key]
+
+    def rollback(self):
+        '''Rollback all replacements (at the end of a test, for instance)'''
+        for ((host_name, member_name), (host, original_member)) in self.registry.items():
+            setattr(host, member_name, original_member)
+
+    def get_key(self,
+                host,
+                member_name):
+        return (id(host), member_name)
 

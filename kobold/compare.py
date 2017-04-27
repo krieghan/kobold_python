@@ -15,15 +15,41 @@ def acts_like_a_list(candidate):
             not isinstance(candidate, six.string_types))
 
 def compare(expected, actual, type_compare=None):
+    '''A wrapper around Compare.compare'''
     return Compare.compare(
             expected,
             actual,
             type_compare=type_compare)
 
 class NotPresent(object):
+    '''Used to explicitly specify that something isn't present,
+       or wasn't supplied'''
     pass
 
 class DontCare(object):
+    '''Used as the "expected" argument in a comparison to mean "I don't 
+       care what the 'actual' object is, as long as some rules hold."  
+       By default, the rule is not_none_or_missing.
+       
+       Rules:
+
+       not_none_or_missing: The second argument can be anything,
+       as long as it is neither None nor NotPresent.
+       
+       list: The second argument can be anything, as long as it is
+       an instance of list.
+       
+       json: The second argument may be any json-parseable string
+
+       iso8601_datetime: The second argument must be able to be 
+       evaluated as an ISO 8601 datetime string (eg. 
+       2017-01-01T00:00:00)
+
+       no_rules: The second argument may be anything - I literally
+       do not care.
+       '''
+
+    
     def __init__(self,
                  rule='not_none_or_missing',
                  **kwargs):
@@ -82,6 +108,7 @@ def get_parsing_hint(rule):
            get a simple data-structure'''
 
         def __init__(self, payload):
+            '''Rules'''
             self.payload = payload
             self.rule = rule
 
@@ -95,12 +122,46 @@ def get_parsing_hint(rule):
 
     return ParsingHint
 
+JSONParsingHint = get_parsing_hint('json')
+ObjectDictParsingHint = get_parsing_hint('object_dict')
+
 class Compare(object):
     @classmethod
     def compare(cls,
                 expected,
                 actual,
                 type_compare=None):
+        '''
+        Compare two arguments against each other.  If they are 
+        dicts or lists, recursively compare their components.
+        Return the difference.  If there is no difference, return the string
+        'match'.  
+
+        The third, optional argument is type_compare, which gives compare
+        some information about how it should do matching.  The value may
+        be either a string or a dictionary.  If it is a dictionary,
+        the two keys are "hash" and "ordered".  If type_compare is a 
+        string, the value is treated as the value for "hash".  
+
+        The hash key may either be "full" or "existing".  Full means that
+        two dictionaries must match entirely.  Existing means that only
+        the keys in the first dictionary must match in the second
+        dictionary (ie. the keys that are only in the second dictionary
+        are ignored).
+
+        The ordered key may be either True or False.  If it is True,
+        lists that are compared against each other are expected
+        to be ordered the same way.  If it is False, lists that are
+        compared against each other are expected to have the same
+        elements, but in any order.
+
+        hash defaults to "full", and ordered defaults to True.
+
+        The hash comparison mode may be overridden in a sub-hash, 
+        by specifying a special key "__compare".  The mode names
+        are the same - "full" and "existing"
+        '''
+
         if type_compare is None:
             type_compare = {}
         elif isinstance(type_compare, str):
