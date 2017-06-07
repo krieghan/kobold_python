@@ -12,7 +12,8 @@ def acts_like_a_hash(candidate):
 def acts_like_a_list(candidate):
     return (hasattr(candidate, '__iter__') and 
             hasattr(candidate, '__len__') and
-            not isinstance(candidate, six.string_types))
+            not isinstance(candidate, six.string_types) and
+            not isinstance(candidate, dict))
 
 def compare(expected, actual, type_compare=None):
     '''A wrapper around Compare.compare'''

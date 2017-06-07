@@ -252,3 +252,31 @@ class TestCompare(unittest.TestCase):
                     actual,
                     type_compare='full'))
 
+    def test_compare_empty_list_with_empty_hash(self):
+        expected = {}
+        actual = []
+        self.assertEqual(
+            ({}, []),
+            compare.compare(
+                expected,
+                actual))
+
+    def test_compare_empty_hash_with_empty_list(self):
+        expected = []
+        actual = {}
+        self.assertEqual(
+            ([], {}),
+            compare.compare(
+                expected,
+                actual))
+
+    def test_compare_nonempty_list_with_nonempty_hash(self):
+        expected = {'a': 1}
+        actual = [1]
+        self.assertEqual(
+            ({'a': 1}, [1]),
+            compare.compare(
+                expected,
+                actual))
+
+
