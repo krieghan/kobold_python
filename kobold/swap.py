@@ -42,10 +42,45 @@ class SafeSwap(object):
         proxy.stub_function.calls(original_member)
         return proxy
 
+    def make_decorator(
+            self,
+            decorated_function,
+            before=None,
+            after=None,
+            on_failure=None):
+        def decorator(*args, **kwargs):
+            if before:
+                before(*args, **kwargs)
+            try:
+                ret = decorated_function(*args, **kwargs)
+            except Exception as e:
+                if on_failure:
+                    return on_failure(e, *args, **kwargs)
+            if after:
+                after(ret, *args, **kwargs)
+            return ret
+
+        return decorator
+
+    def install_decorator(self,
+                          host,
+                          member_name,
+                          before=None,
+                          after=None,
+                          on_failure=None):
+        decorator = self.make_decorator(
+            getattr(host, member_name),
+            before=before,
+            after=after,
+            on_failure=on_failure)
+        self.swap(host, member_name, decorator)
+        return decorator
+
+
     def unswap(self, host, member_name):
         '''Rollback a specific replacement'''
         key = self.get_key(host, member_name)
-        original_member = self.registry[key]
+        (host, original_member) = self.registry[key]
         setattr(host, member_name, original_member)
         del self.registry[key]
 
