@@ -4,16 +4,10 @@ import six
 
 from dateutil import parser
 
-from kobold.hash_functions import combine
-
-def acts_like_a_hash(candidate):
-    return hasattr(candidate, 'items')
-
-def acts_like_a_list(candidate):
-    return (hasattr(candidate, '__iter__') and 
-            hasattr(candidate, '__len__') and
-            not isinstance(candidate, six.string_types) and
-            not isinstance(candidate, dict))
+from kobold.hash_functions import (
+        combine,
+        acts_like_a_hash,
+        acts_like_a_list)
 
 def compare(expected, actual, type_compare=None):
     '''A wrapper around Compare.compare'''
@@ -25,6 +19,9 @@ def compare(expected, actual, type_compare=None):
 class NotPresent(object):
     '''Used to explicitly specify that something isn't present,
        or wasn't supplied'''
+    pass
+
+class ValidationError(Exception):
     pass
 
 class DontCare(object):
@@ -56,6 +53,13 @@ class DontCare(object):
                  **kwargs):
         self.rule = rule
         self.options = kwargs
+        self.validate()
+
+    def validate(self):
+        if self.rule == 'isinstance':
+            if self.options.get('of_class') is None:
+                raise ValidationError('isinstance dontcares must have an "of_class" option specivied')
+        
 
     def compare_with(self, other_thing):
         if self.rule == 'not_none_or_missing':
@@ -78,8 +82,12 @@ class DontCare(object):
                 return True
             except:
                 return False
+        elif self.rule == 'isinstance':
+            return isinstance(other_thing, self.options['of_class'])
         elif self.rule is None or self.rule == 'no_rules':
             return True
+        else:
+            raise NotImplementedError('DontCare rule {} not recognized'.format(self.rule))
         
 class ListDiff(list):
     def __init__(self, arr=None, display_type=list):

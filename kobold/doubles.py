@@ -1,5 +1,8 @@
 import types
-from kobold import compare
+
+from kobold import (
+        compare,
+        hash_functions)
 
 class StubFunction(object):
     '''A Stub is a Test Double that is intended to replace a real function
@@ -129,7 +132,8 @@ class RoutableStubFunction(object):
        Default routes are followed if no other route matched.'''
 
     def __init__(self, default_route=None, *args, **kwargs):
-        self.routes = []
+        self.routes = {}
+        self.route_indexes = {}
         if default_route is not None and len(default_route) == 2:
             default_route = ('default',) + default_route
         self.default_route = default_route
@@ -172,45 +176,65 @@ class RoutableStubFunction(object):
            we raise an exception.
            '''
 
-        self.routes.append((condition, stub_type, stub_value))
+        condition = hash_functions.make_hashable(condition)
+
+        routes_for_condition = self.routes.get(condition)
+        if routes_for_condition is None:
+            routes_for_condition = self.routes[condition] = []
+
+        routes_for_condition.append(
+            (condition, 
+             stub_type, 
+             stub_value))
         if condition == 'default':
             self.default_route = ('default', stub_type, stub_value)
 
     def clear_routes(self):
         '''Get rid of any route that has been setup, including the
            default_route'''
-        self.routes = []
+        self.routes = {}
         self.default_route = None
 
-    def __call__(self, *args, **kwargs):
+    def get_candidates(self, args, kwargs):
         candidates = []
-        for route in self.routes:
-            condition, stub_type, stub_value = route
-            if condition == 'default':
-                continue
-            
-            if type(condition) == dict:
-                if (len(condition.keys()) == 2 
-                    and 'args' in condition.keys() 
-                    and 'kwargs' in condition.keys()):
-                    thing_to_compare = {'args' : args, 'kwargs' : kwargs}
-                else:
-                    thing_to_compare = kwargs
-            elif type(condition) == tuple:
-                thing_to_compare = args
-            else:
-                raise Exception("Unknown condition type: %s" % type(condition))
-
-            if compare.compare(
-                    condition, 
-                    thing_to_compare, 
-                    type_compare='existing') == 'match':
-                candidates.append(route)
+        for key, routes in self.routes.items():
+            candidate = None
+            for route in routes:
+                (condition, stub_type, stub_value) = route
+                if condition == 'default':
+                    continue
                 
+                if hash_functions.acts_like_a_hash(condition):
+                    if (len(condition.keys()) == 2 
+                        and 'args' in condition.keys() 
+                        and 'kwargs' in condition.keys()):
+                        thing_to_compare = {'args' : args, 'kwargs' : kwargs}
+                    else:
+                        thing_to_compare = kwargs
+                elif hash_functions.acts_like_a_list(condition):
+                    thing_to_compare = args
+                else:
+                    raise Exception("Unknown condition type: %s" % type(condition))
+
+                if compare.compare(
+                        condition, 
+                        thing_to_compare, 
+                        type_compare='existing') == 'match':
+                    if candidate is None:
+                        candidate = (key, [route])
+                    else:
+                        candidate[1].append(route)
+            if candidate is not None:
+                candidates.append((condition, routes))
 
         if len(candidates) == 0:
             if self.default_route:
-                candidates.append(self.default_route)
+                candidates.append(('default', [self.default_route]))
+
+        return candidates
+
+    def __call__(self, *args, **kwargs):
+        candidates = self.get_candidates(args, kwargs)
 
         if len(candidates) > 1:
             raise StubRoutingException("More than one route candidate for stub: %s" % candidates)
@@ -218,8 +242,26 @@ class RoutableStubFunction(object):
         if len(candidates) == 0:
             raise StubRoutingException("No route candidates for stub")
 
-        (condition, stub_type, stub_value) = candidates[0]
+        condition, routes = candidates[0]
+        if len(routes) == 1:
+            route = routes[0]
+        elif len(routes) > 1:
+            route_index = self.route_indexes.get(condition, 0)
+            if route_index < len(routes):
+                route = routes[route_index]
+                self.route_indexes[condition] = route_index + 1
+            else:
+                raise StubRoutingException(
+                    '{} routes exist for stub for condition {}, '
+                    'but the stub was called {} times'.format(
+                        len(routes),
+                        condition,
+                        route_index + 1))
+        else:
+            raise StubRoutingException(
+                'No routes for route candidate')
 
+        (condition, stub_type, stub_value) = route
         if stub_type == 'value':
             return stub_value
 
@@ -228,6 +270,7 @@ class RoutableStubFunction(object):
 
         if stub_type == 'exception':
             raise stub_value
+
 
 class StubRoutingException(Exception):
     '''This exception indicates that a RoutableStubFunction could

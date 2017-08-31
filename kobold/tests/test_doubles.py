@@ -83,6 +83,34 @@ class TestRoutableStubFunction(unittest.TestCase):
             'something_without_the_pattern',
             kwarg='_')
 
+    def test_multiple_candidates(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=(re.compile('.*pattern1.*'),),
+            stub_type='value',
+            stub_value=1)
+        stub_function.add_route(
+            condition=(re.compile('.*pattern1.*'),),
+            stub_type='value',
+            stub_value=2)
+
+        self.assertEqual(1, stub_function('pattern1'))
+        self.assertEqual(2, stub_function('pattern1'))
+        self.assertRaises(
+            doubles.StubRoutingException,
+            stub_function,
+            'pattern1')
+
+    def test_arg_is_dict(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=({'a': 1},),
+            stub_type='value',
+            stub_value=1)
+
+        self.assertEqual(1, stub_function({'a': 1}))
+
+
 class TestStubFunction(unittest.TestCase):
     def test_raises(self):
         e = TestException()

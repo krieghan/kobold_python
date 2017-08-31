@@ -56,6 +56,8 @@ class SafeSwap(object):
             except Exception as e:
                 if on_failure:
                     return on_failure(e, *args, **kwargs)
+                else:
+                    raise
             if after:
                 after(ret, *args, **kwargs)
             return ret
