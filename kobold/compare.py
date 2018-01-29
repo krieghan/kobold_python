@@ -128,11 +128,17 @@ def get_parsing_hint(rule):
                 if thing_to_parse is NotPresent:
                     return NotPresent
                 return thing_to_parse.__dict__
+            elif self.rule == 'object_attr':
+                attr_dict = {}
+                for (key, value) in self.payload.items():
+                    attr_dict[key] = getattr(thing_to_parse, key)
+                return attr_dict
 
     return ParsingHint
 
 JSONParsingHint = get_parsing_hint('json')
 ObjectDictParsingHint = get_parsing_hint('object_dict')
+ObjectAttrParsingHint = get_parsing_hint('object_attr')
 
 class Compare(object):
     @classmethod

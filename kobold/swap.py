@@ -1,9 +1,10 @@
+import asyncio
+
 from kobold import doubles
 
 class SafeSwap(object):
     '''Instances of this class manage runtime replacements of members,
        and enable all replacements to be undone with the rollback method'''
-       
        
     def __init__(self):
         self.registry = {}
@@ -48,19 +49,34 @@ class SafeSwap(object):
             before=None,
             after=None,
             on_failure=None):
-        def decorator(*args, **kwargs):
-            if before:
-                before(*args, **kwargs)
-            try:
-                ret = decorated_function(*args, **kwargs)
-            except Exception as e:
-                if on_failure:
-                    return on_failure(e, *args, **kwargs)
-                else:
-                    raise
-            if after:
-                after(ret, *args, **kwargs)
-            return ret
+        if asyncio.iscoroutinefunction(decorated_function):
+            async def decorator(*args, **kwargs):
+                if before:
+                    before(*args, **kwargs)
+                try:
+                    ret = await decorated_function(*args, **kwargs)
+                except Exception as e:
+                    if on_failure:
+                        return on_failure(e, *args, **kwargs)
+                    else:
+                        raise
+                if after:
+                    after(ret, *args, **kwargs)
+                return ret
+        else:
+            def decorator(*args, **kwargs):
+                if before:
+                    before(*args, **kwargs)
+                try:
+                    ret = decorated_function(*args, **kwargs)
+                except Exception as e:
+                    if on_failure:
+                        return on_failure(e, *args, **kwargs)
+                    else:
+                        raise
+                if after:
+                    after(ret, *args, **kwargs)
+                return ret
 
         return decorator
 

@@ -55,6 +55,10 @@ class StubFunction(object):
         else:
             return self.to_return
 
+class StubCoroutine(StubFunction):
+    async def __call__(self, *args, **kwargs):
+        return super(StubCoroutine, self).__call__(*args, **kwargs)
+
 class SpyFunction(object):
     '''A Spy is a Test Double that makes a record of each time it is called,
        typically to be queried later.  SpyFunction saves the args and
@@ -87,7 +91,14 @@ class SpyFunction(object):
         except AttributeError:
             return getattr(self.stub_function, attr)
 
-def get_stub_class(methods_to_add, is_callable=False):
+class SpyCoroutine(SpyFunction):
+    async def __call__(self, *args, **kwargs):
+        return super(SpyCoroutine, self).__call__(*args, **kwargs)
+
+def get_stub_class(
+        methods_to_add, 
+        coroutines_to_add=None,
+        is_callable=False):
     '''Creates a class whose methods are all spies.
 
        methods_to_add is dictionary or a list of methods to 
@@ -100,6 +111,8 @@ def get_stub_class(methods_to_add, is_callable=False):
        set to True, we will add a __call__ method to the class
        that will make instances of the class behave like a SpyFunctions.
     '''
+    if coroutines_to_add is None:
+        coroutines_to_add = {}
 
     class StubClass(object):
         def __init__(self, *args, **kwargs):
@@ -120,6 +133,9 @@ def get_stub_class(methods_to_add, is_callable=False):
     elif isinstance(methods_to_add, list):
         for method_name in methods_to_add:
             setattr(StubClass, method_name, SpyFunction(returns=None))
+    for (method_name, return_value) in coroutines_to_add.items():
+        spy_coroutine = SpyCoroutine(returns=return_value)
+        setattr(StubClass, method_name, spy_coroutine)
 
     return StubClass
                 
@@ -267,6 +283,45 @@ class RoutableStubFunction(object):
 
         if stub_type == 'callable':
             return stub_value(*args, **kwargs)
+
+        if stub_type == 'exception':
+            raise stub_value
+
+class RoutableStubCoroutine(RoutableStubFunction):
+    async def __call__(self, *args, **kwargs):
+        candidates = self.get_candidates(args, kwargs)
+
+        if len(candidates) > 1:
+            raise StubRoutingException("More than one route candidate for stub: %s" % candidates)
+
+        if len(candidates) == 0:
+            raise StubRoutingException("No route candidates for stub")
+
+        condition, routes = candidates[0]
+        if len(routes) == 1:
+            route = routes[0]
+        elif len(routes) > 1:
+            route_index = self.route_indexes.get(condition, 0)
+            if route_index < len(routes):
+                route = routes[route_index]
+                self.route_indexes[condition] = route_index + 1
+            else:
+                raise StubRoutingException(
+                    '{} routes exist for stub for condition {}, '
+                    'but the stub was called {} times'.format(
+                        len(routes),
+                        condition,
+                        route_index + 1))
+        else:
+            raise StubRoutingException(
+                'No routes for route candidate')
+
+        (condition, stub_type, stub_value) = route
+        if stub_type == 'value':
+            return stub_value
+
+        if stub_type == 'callable':
+            return await stub_value(*args, **kwargs)
 
         if stub_type == 'exception':
             raise stub_value
