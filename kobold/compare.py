@@ -467,7 +467,7 @@ class Compare(object):
     @classmethod
     def display(cls, element, other_element):
         if type(element) == DontCare:
-            return "dontcare: %s" % expected.rule
+            return "dontcare: %s" % element.rule
         elif acts_like_a_hash(element) and acts_like_a_hash(other_element):
             return cls.display_hash(element, other_element)
         elif isinstance(element, tuple) and isinstance(other_element, tuple):
@@ -479,7 +479,7 @@ class Compare(object):
         elif type(other_element).__name__ == 'ParsingHint':
             return cls.display(other_element.parse(element), other_element.payload)
         elif type(element).__name__ == 'ParsingHint':
-            return cls.display(element.payload, element.parse(element))
+            return cls.display(element.payload, element.parse(other_element))
         else:
             return element
 
