@@ -1,4 +1,6 @@
+from kobold import compare
 import six
+
 
 def project(hash_in, attributes):
     '''
@@ -22,6 +24,7 @@ def merge(default, to_mutate):
 
     return to_mutate 
 
+
 def combine(default, extra):
     '''
     Take two dicts and create a third dict with all the keys
@@ -37,6 +40,26 @@ def combine(default, extra):
         new[key] = value
 
     return new
+
+def deep_combine(default, extra):
+    keys = set()
+    keys.update(default.keys())
+    keys.update(extra.keys())
+    new = {}
+    for key in keys:
+        default_for_key = default.get(key, compare.NotPresent)
+        extra_for_key = extra.get(key, compare.NotPresent)
+        if (isinstance(default_for_key, dict) and 
+            isinstance(extra_for_key, dict)):
+            new[key] = deep_combine(
+                    default_for_key,
+                    extra_for_key)
+        else:
+            new[key] = default_for_key
+            if extra_for_key is not compare.NotPresent:
+                new[key] = extra_for_key
+    return new
+
 
 def acts_like_a_hash(candidate):
     return hasattr(candidate, 'items')
