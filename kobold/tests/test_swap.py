@@ -1,9 +1,13 @@
+import asyncio
 import unittest
 
 from kobold import swap, doubles
 
 class Host(object):
     def subject(self, arg, kwarg=None):
+        return "original subject"
+
+    async def subject_cr(self, arg, kwarg=None):
         return "original subject"
 
 
@@ -34,8 +38,47 @@ class TestSwap(unittest.TestCase):
         self.assertEqual('original subject', returned)
         self.assertEqual([((host, 'some_arg'), dict(kwarg='some_kwarg'))],
                          host.subject.calls)
-        
 
-        
+    def test_default_original(self):
+        routable_stub = doubles.RoutableStubFunction()
+        routable_stub.add_route(
+            {'kwarg': 1},
+            stub_type='value',
+            stub_value='new subject')
+        self.safe_swap.swap(
+            Host,
+            'subject',
+            routable_stub,
+            default_original=True)
+        host = Host()
+        self.assertEqual(
+            'new subject',
+            host.subject('some_arg', kwarg=1))
+        self.assertEqual(
+            'original subject',
+            host.subject('some_arg', kwarg=2))
+
+    def test_default_original_coroutine(self):
+        loop = asyncio.get_event_loop()
+        routable_stub = doubles.RoutableStubCoroutine()
+        routable_stub.add_route(
+            {'kwarg': 1},
+            stub_type='value',
+            stub_value='new subject')
+        self.safe_swap.swap(
+            Host,
+            'subject_cr',
+            routable_stub,
+            default_original=True)
+        host = Host()
+        self.assertEqual(
+            'new subject',
+            loop.run_until_complete(
+                host.subject_cr('some_arg', kwarg=1)))
+        self.assertEqual(
+            'original subject',
+            loop.run_until_complete(
+                host.subject_cr('some_arg', kwarg=2)))
+
 
 

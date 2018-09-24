@@ -12,7 +12,8 @@ class SafeSwap(object):
     def swap(self, 
              host,
              member_name,
-             new_member):
+             new_member,
+             default_original=False):
         '''Given a host object, a member name, and some other object,
            replace the member of that name on that host with the given object.
            This can be undone with rollback()'''
@@ -21,6 +22,8 @@ class SafeSwap(object):
             self.registry[key] = (host, getattr(host, member_name, None))
 
         setattr(host, member_name, new_member)
+        if default_original:
+            new_member.default_original(self.registry[key][1])
 
     def install_proxy(self,
                       host,

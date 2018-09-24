@@ -1,7 +1,10 @@
 import re
 import unittest
 
-from kobold import doubles
+from kobold import (
+        compare,
+        doubles,
+        swap)
 
 class TestException(Exception):
     pass
@@ -9,7 +12,21 @@ class TestException(Exception):
 def test_function(*args, **kwargs):
     return 'test_function'
 
+class Host(object):
+    def __init__(self, *args, **kwargs):
+        for (name, value) in kwargs.items():
+            setattr(self, name, value)
+
+    def test(self, *args, **kwargs):
+        return 'original'
+
 class TestRoutableStubFunction(unittest.TestCase):
+    def setUp(self):
+        self.safe_swap = swap.SafeSwap()
+
+    def tearDown(self):
+        self.safe_swap.rollback()
+
     def test_kwarg_routing(self):
         stub_function = doubles.RoutableStubFunction()
         stub_function.add_route(
@@ -38,6 +55,33 @@ class TestRoutableStubFunction(unittest.TestCase):
         self.assertEqual(2, stub_function(1))
         self.assertEqual(4, stub_function(3))
 
+    def test_self_routing(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition={
+                'self': {'a': 1}},
+            stub_type='value',
+            stub_value=1)
+        stub_function.add_route(
+            condition={
+                'self': {'a': 2}},
+            stub_type='value',
+            stub_value=2)
+        self.safe_swap.swap(
+            Host,
+            'test',
+            stub_function,
+            default_original=True)
+
+        host1 = Host(a=1)
+        host2 = Host(a=2)
+        self.assertEqual(
+                1,
+                host1.test())
+        self.assertEqual(
+                2,
+                host2.test())
+
     def test_arg_and_kwarg_routing(self):
         stub_function = doubles.RoutableStubFunction()
         stub_function.add_route(
@@ -53,6 +97,7 @@ class TestRoutableStubFunction(unittest.TestCase):
 
         self.assertEqual(2, stub_function(1, kwarg=1))
         self.assertEqual(4, stub_function(3, kwarg=3))
+
 
 
     def test_kwarg_with_pattern(self):
@@ -82,24 +127,6 @@ class TestRoutableStubFunction(unittest.TestCase):
             stub_function,
             'something_without_the_pattern',
             kwarg='_')
-
-    def test_multiple_candidates(self):
-        stub_function = doubles.RoutableStubFunction()
-        stub_function.add_route(
-            condition=(re.compile('.*pattern1.*'),),
-            stub_type='value',
-            stub_value=1)
-        stub_function.add_route(
-            condition=(re.compile('.*pattern1.*'),),
-            stub_type='value',
-            stub_value=2)
-
-        self.assertEqual(1, stub_function('pattern1'))
-        self.assertEqual(2, stub_function('pattern1'))
-        self.assertRaises(
-            doubles.StubRoutingException,
-            stub_function,
-            'pattern1')
 
     def test_arg_is_dict(self):
         stub_function = doubles.RoutableStubFunction()

@@ -32,6 +32,8 @@ def assert_equal(
                      type_compare=type_compare)
     raise_if_not_match(result)
 
+assert_match = assert_equal
+
 def raise_if_not_match(result):
     if result != 'match':
         expected_diff, actual_diff = result

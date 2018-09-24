@@ -122,11 +122,12 @@ def get_parsing_hint(rule):
             self.rule = rule
 
         def parse(self, thing_to_parse):
+            if thing_to_parse is NotPresent:
+                return NotPresent
+
             if self.rule == 'json':
                 return json.loads(thing_to_parse)
             elif self.rule == 'object_dict':
-                if thing_to_parse is NotPresent:
-                    return NotPresent
                 return thing_to_parse.__dict__
             elif self.rule == 'object_attr':
                 attr_dict = {}
