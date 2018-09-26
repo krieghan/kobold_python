@@ -76,6 +76,8 @@ class SpyFunction(object):
     def reset(self):
         '''Forget any calls this spy has recorded'''
         self.calls = []
+        if getattr(self.stub_function, 'reset', None) is not None:
+            self.stub_function.reset()
 
     def __call__(self, *args, **kwargs):
         self.calls.append((args, kwargs))
@@ -206,11 +208,17 @@ class RoutableStubFunction(object):
             self.default_route = ('default', stub_type, stub_value)
 
 
+    def reset(self):
+        self.calls_by_key = {}
+
     def clear_routes(self):
         '''Get rid of any route that has been setup, including the
            default_route'''
         self.routes = {}
         self.default_route = None
+
+    def set_original_reference(self, original_reference):
+        self.original_reference = original_reference
 
     def default_original(self, original_reference):
         self.default_route = ('default', 'callable', original_reference)
@@ -289,6 +297,16 @@ class RoutableStubFunction(object):
         if stub_type == 'exception':
             raise stub_value
 
+        if stub_type == 'original':
+            if self.host is compare.NotPresent:
+                to_call = self.original_reference
+            else:
+                to_call = self.original_reference.__get__(
+                        self.host,
+                        self.host.__class__)
+            return to_call(*args, **kwargs)
+
+
 class RoutableStubCoroutine(RoutableStubFunction):
     async def __call__(self, *args, **kwargs):
         candidates = self.get_candidates(args, kwargs)
@@ -324,6 +342,15 @@ class RoutableStubCoroutine(RoutableStubFunction):
 
         if stub_type == 'exception':
             raise stub_value
+
+        if stub_type == 'original':
+            if self.host is compare.NotPresent:
+                to_call = self.original_reference
+            else:
+                to_call = self.original_reference.__get__(
+                        self.host,
+                        self.host.__class__)
+            return await to_call(*args, **kwargs)
 
 
 class StubRoutingException(Exception):

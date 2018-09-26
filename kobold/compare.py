@@ -132,7 +132,10 @@ def get_parsing_hint(rule):
             elif self.rule == 'object_attr':
                 attr_dict = {}
                 for (key, value) in self.payload.items():
-                    attr_dict[key] = getattr(thing_to_parse, key)
+                    attr_dict[key] = getattr(
+                            thing_to_parse, 
+                            key, 
+                            NotPresent)
                 return attr_dict
 
     return ParsingHint

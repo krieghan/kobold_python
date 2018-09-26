@@ -22,6 +22,9 @@ class SafeSwap(object):
             self.registry[key] = (host, getattr(host, member_name, None))
 
         setattr(host, member_name, new_member)
+        if getattr(new_member, 'set_original_reference', None) is not None:
+            new_member.set_original_reference(self.registry[key][1])
+
         if default_original:
             new_member.default_original(self.registry[key][1])
 
