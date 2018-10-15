@@ -9,6 +9,10 @@ from kobold.hash_functions import (
         acts_like_a_hash,
         acts_like_a_list)
 
+pattern_type = getattr(re, '_pattern_type', None)
+if pattern_type is None:
+    pattern_type = getattr(re, 'Pattern')
+
 def compare(expected, actual, type_compare=None):
     '''A wrapper around Compare.compare'''
     return Compare.compare(
@@ -197,7 +201,7 @@ class Compare(object):
             else:
                 return ("dontcare: %s" % expected.rule,
                         actual)
-        elif (type(expected) == re._pattern_type and 
+        elif (type(expected) == pattern_type and 
               isinstance(actual, six.string_types)):
             match = expected.match(actual)
             if match:
@@ -478,7 +482,7 @@ class Compare(object):
             return cls.display_list(element, other_element, iter_type=tuple)
         elif acts_like_a_list(element) and acts_like_a_list(other_element):
             return cls.display_list(element, other_element, iter_type=list)
-        elif type(element) == re._pattern_type:
+        elif type(element) == pattern_type:
             return 'regex: %s' % element.pattern
         elif type(other_element).__name__ == 'ParsingHint':
             return cls.display(other_element.parse(element), other_element.payload)
