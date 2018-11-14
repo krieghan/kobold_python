@@ -1,3 +1,4 @@
+import asyncio
 import types
 import uuid
 
@@ -58,7 +59,12 @@ class StubFunction(object):
 
 class StubCoroutine(StubFunction):
     async def __call__(self, *args, **kwargs):
-        return super(StubCoroutine, self).__call__(*args, **kwargs)
+        if self.to_raise:
+            raise self.to_raise
+        elif self.to_call:
+            return await self.to_call(*args, **kwargs)
+        else:
+            return self.to_return
 
 
 class SpyFunction(object):
@@ -97,7 +103,11 @@ class SpyFunction(object):
 
 class SpyCoroutine(SpyFunction):
     async def __call__(self, *args, **kwargs):
-        return super(SpyCoroutine, self).__call__(*args, **kwargs)
+        self.calls.append((args, kwargs))
+        if asyncio.iscoroutinefunction(self.stub_function.__call__):
+            return await self.stub_function(*args, **kwargs)
+        else:
+            return self.stub_function(*args, **kwargs)
 
 def get_stub_class(
         methods_to_add, 

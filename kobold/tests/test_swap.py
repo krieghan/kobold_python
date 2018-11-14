@@ -1,7 +1,11 @@
 import asyncio
 import unittest
 
-from kobold import swap, doubles
+from kobold import (
+        assertions,
+        compare,
+        doubles,
+        swap)
 
 class Host(object):
     def subject(self, arg, kwarg=None):
@@ -9,6 +13,39 @@ class Host(object):
 
     async def subject_cr(self, arg, kwarg=None):
         return "original subject"
+
+
+class TestInstallProxy(unittest.TestCase):
+    def setUp(self):
+        self.safe_swap = swap.SafeSwap()
+
+    def tearDown(self):
+        self.safe_swap.rollback()
+
+    def test_proxy(self):
+        self.safe_swap.install_proxy(Host, 'subject')
+        host = Host()
+        returned = host.subject('some_arg', kwarg='some_kwarg')
+        self.assertEqual('original subject', returned)
+        self.assertEqual([((host, 'some_arg'), dict(kwarg='some_kwarg'))],
+                         host.subject.calls)
+
+    def test_coroutine_proxy(self):
+        host = Host()
+        proxy = self.safe_swap.install_proxy(
+            Host,
+            'subject_cr')
+
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(
+                host.subject_cr('1'))
+        self.assertEqual(
+                'original subject',
+                result)
+        assertions.assert_match(
+            [((compare.DontCare(), '1'), {})],
+            proxy.calls)
+
 
 
 class TestSwap(unittest.TestCase):
@@ -31,13 +68,6 @@ class TestSwap(unittest.TestCase):
 
         self.assertEqual('original subject', host.subject(arg=1, kwarg=1))
 
-    def test_proxy(self):
-        self.safe_swap.install_proxy(Host, 'subject')
-        host = Host()
-        returned = host.subject('some_arg', kwarg='some_kwarg')
-        self.assertEqual('original subject', returned)
-        self.assertEqual([((host, 'some_arg'), dict(kwarg='some_kwarg'))],
-                         host.subject.calls)
 
     def test_default_original(self):
         routable_stub = doubles.RoutableStubFunction()
