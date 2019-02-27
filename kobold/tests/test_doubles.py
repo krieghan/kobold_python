@@ -137,6 +137,19 @@ class TestRoutableStubFunction(unittest.TestCase):
 
         self.assertEqual(1, stub_function({'a': 1}))
 
+    def test_rotate(self):
+        stub_function = doubles.RoutableStubFunction()
+        route = doubles.RotatingRoute(
+                    condition=('a',),
+                    routes=[
+                     ('value', 1),
+                     ('value', 2)])
+                     
+        stub_function.add_route(route=route)
+
+        self.assertEqual(1, stub_function('a'))
+        self.assertEqual(2, stub_function('a'))
+
 
 class TestStubFunction(unittest.TestCase):
     def test_raises(self):

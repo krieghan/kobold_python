@@ -154,76 +154,61 @@ def get_stub_class(
     return StubClass
                 
 
+class Route(object):
+    def __init__(self, condition, stub_type, stub_value):
+        self.condition = condition
+        self.stub_type = stub_type
+        self.stub_value = stub_value
+
+    def select(self):
+        return (self.condition, self.stub_type, self.stub_value)
+
+
+class RotatingRoute(object):
+    def __init__(self, condition, routes):
+        self.condition = condition
+        self.routes = routes
+        self.index = 0
+
+    def select(self):
+        stub_type, stub_value = self.routes[self.index]
+        self.index = (self.index + 1) % len(self.routes)
+        return (self.condition, stub_type, stub_value)
+
+
 class RoutableStubFunction(object):
-    '''RoutableStubFunction is a special type of Stub that returns
-       different results based on the arguments supplied.  The arguments form
-       the basis of a "route".  A route determines which action is taken
-       when the StubFunction is called.  A default_route may be supplied.  
-       Default routes are followed if no other route matched.'''
 
     def __init__(self, default_route=None, *args, **kwargs):
         self.routes = {}
         self.route_indexes = {}
-        if default_route is not None and len(default_route) == 2:
-            default_route = ('default',) + default_route
+        if (default_route is not None and 
+             not isinstance(default_route, Route)):
+            raise NotImplementedError()
         self.default_route = default_route
         self.host = compare.NotPresent
         self.calls_by_key = {}
 
-    def add_route(self, condition, stub_type, stub_value, key=None):
-        '''Add a route to the StubFunction.  A route consists of a 
-           condition, a stub_type and a stub_value.
-
-           A condition is the arguments received by the StubFunction that
-           triggers the given result.  The condition argument may be a 
-           dictionary of keyword arguments, a tuple of arguments, or a 
-           dictionary with two keys - kwargs and args - that map to 
-           keyword arguments and arguments, respectively.
-
-           The stub_type is a string that is either "value", "exception"
-           or "callable".  This determines whether the stub function
-           returns a value, throws an exception, or returns the result
-           of calling another function (respectively).  
-
-           The third argument, stub_value is the value that is returned,
-           the exception that is raised, or the function that is called,
-           depending on what stub_type was specified to be.
-
-           When the stub function is called, we iterate over each
-           route.  Depending on the form that condition took when it 
-           was provided, we compare the condition against either the args,
-           the kwargs, or a dictionary with keys "args" and "kwargs"
-           mapped to each.  The comparison is performed using kobold
-           compare, with hashes being compared using the "existing"
-           logic, and lists being given an ordered comparison.  This means,
-           among other things, that regexes may be provided in the condition.
-
-           If the route matches, it is added to the list of matching routes.
-           If the route does not match, it is ignored and we move on to 
-           the next.  When all the routes have been compared, if we ended
-           up matching against exactly one route, we follow the action
-           specified in the route (ie. return, raise or call the stub_value).
-           If no routes matched, we use the default route, if it was provided.
-           If no default route was provided, or if more than one route matched,
-           we raise an exception.
-           '''
-
+    def add_route(
+            self,
+            condition=None,
+            stub_type=None,
+            stub_value=None,
+            route=None,
+            key=None):
         if key is None:
             key = uuid.uuid4().hex
-        condition = hash_functions.make_hashable(condition)
+        if route is None:
+            route = Route(condition, stub_type, stub_value)
 
-        self.routes[key] = (condition, stub_type, stub_value)
+        self.routes[key] = route
 
-        if condition == 'default':
-            self.default_route = ('default', stub_type, stub_value)
-
+        if route.condition == 'default':
+            self.default_route = route
 
     def reset(self):
         self.calls_by_key = {}
 
     def clear_routes(self):
-        '''Get rid of any route that has been setup, including the
-           default_route'''
         self.routes = {}
         self.default_route = None
 
@@ -231,12 +216,13 @@ class RoutableStubFunction(object):
         self.original_reference = original_reference
 
     def default_original(self, original_reference):
-        self.default_route = ('default', 'callable', original_reference)
+        self.default_route = Route('default', 'callable', original_reference)
 
     def get_candidates(self, args, kwargs):
         candidates = []
         for key, route in self.routes.items():
-            (condition, stub_type, stub_value) = route
+            
+            condition = route.condition
             if condition == 'default':
                 continue
             
@@ -282,7 +268,7 @@ class RoutableStubFunction(object):
             raise StubRoutingException("More than one route candidate for stub: %s" % candidates)
 
         if len(candidates) == 0:
-            raise StubRoutingException("No route candidates for stub")
+            raise StubRoutingException("No route candidates for stub {} {}".format(args, kwargs))
 
         key, route = candidates[0]
         calls_for_key = self.calls_by_key.get(key)
@@ -291,7 +277,7 @@ class RoutableStubFunction(object):
 
         calls_for_key.append((args, kwargs))
 
-        (condition, stub_type, stub_value) = route
+        (condition, stub_type, stub_value) = route.select()
         if stub_type == 'value':
             return stub_value
 
@@ -337,7 +323,7 @@ class RoutableStubCoroutine(RoutableStubFunction):
 
         calls_for_key.append((args, kwargs))
 
-        (condition, stub_type, stub_value) = route
+        (condition, stub_type, stub_value) = route.select()
         if stub_type == 'value':
             return stub_value
 
