@@ -183,7 +183,8 @@ class RoutableStubFunction(object):
         self.route_indexes = {}
         if (default_route is not None and 
              not isinstance(default_route, Route)):
-            raise NotImplementedError()
+            raise NotImplementedError(
+                'default_route must be of an instance of doubles.Route')
         self.default_route = default_route
         self.host = compare.NotPresent
         self.calls_by_key = {}
@@ -221,7 +222,6 @@ class RoutableStubFunction(object):
     def get_candidates(self, args, kwargs):
         candidates = []
         for key, route in self.routes.items():
-            
             condition = route.condition
             if condition == 'default':
                 continue

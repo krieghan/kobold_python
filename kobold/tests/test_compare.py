@@ -1,8 +1,6 @@
 import unittest
-from kobold import compare
+from kobold import assertions, compare
 
-JsonParsingHint = compare.get_parsing_hint('json')
-ObjectDictParsingHint = compare.get_parsing_hint('object_dict')
 
 class ObjectThing(object):
     def __init__(self, **kwargs):
@@ -68,21 +66,21 @@ class TestCompare(unittest.TestCase):
                     [1, 4, 3]))
 
     def test_parseable_json_dict(self):
-        expected = JsonParsingHint({'a' : 1})
+        expected = compare.JSONParsingHint({'a' : 1})
         actual = '{"a" : 1}'
         self.assertEqual(
                 'match',
                 compare.compare(expected, actual))
 
     def test_parseable_json_list(self):
-        expected = JsonParsingHint([1, 2, 3])
+        expected = compare.JSONParsingHint([1, 2, 3])
         actual = '[1, 2, 3]'
         self.assertEqual(
                 'match',
                 compare.compare(expected, actual))
 
     def test_parseable_json_mismatch(self):
-        expected = JsonParsingHint({'a' : 1})
+        expected = compare.JSONParsingHint({'a' : 1})
         actual = '{"a" : "1"}'
         self.assertEqual(
                 ({'a' : 1}, {'a' : '1'}),
@@ -108,16 +106,16 @@ class TestCompare(unittest.TestCase):
         self.assertEqual(
                 'match',
                 compare.compare(
-                    ObjectDictParsingHint(expected),
+                    compare.ObjectDictParsingHint(expected),
                     actual))
 
     def test_compare_notpresent_with_object_dict(self):
         expected = {'a' : 1, 'b' : 2, 'c' : 3}
-        self.assertEqual(
+        assertions.assert_match(
                 ({'a' : 1, 'b' : 2, 'c' : 3},
                  compare.NotPresent),
                 compare.compare(
-                    ObjectDictParsingHint(expected),
+                    compare.ObjectDictParsingHint(expected),
                     compare.NotPresent))
 
     def test_compare_dict_with_object_dict_mismatch(self):
@@ -126,7 +124,7 @@ class TestCompare(unittest.TestCase):
         self.assertEqual(
                 ({'c' : 4}, {'c' : 3}),
                 compare.compare(
-                    ObjectDictParsingHint(expected),
+                    compare.ObjectDictParsingHint(expected),
                     actual))
 
     def test_list_of_objects(self):
@@ -135,14 +133,14 @@ class TestCompare(unittest.TestCase):
         self.assertEqual(
                 ([{'c' : 3}], [{'c' : 4}]),
                 compare.compare(
-                    [ObjectDictParsingHint(expected)],
+                    [compare.ObjectDictParsingHint(expected)],
                     actual))
     
     def test_list_of_objects_unordered(self):
         expected = [
-                ObjectDictParsingHint({'a' : 1}),
-                ObjectDictParsingHint({'a' : 2}),
-                ObjectDictParsingHint({'a' : 3})]
+                compare.ObjectDictParsingHint({'a' : 1}),
+                compare.ObjectDictParsingHint({'a' : 2}),
+                compare.ObjectDictParsingHint({'a' : 3})]
         actual = [
                 ObjectThing(a=4),
                 ObjectThing(a=5),
@@ -159,7 +157,7 @@ class TestCompare(unittest.TestCase):
 
     def test_unordered_comparison_object_dict_one_item(self):
         expected = [
-                ObjectDictParsingHint(
+                compare.ObjectDictParsingHint(
                     dict(a=1, b=2, c=3, d=4, e=5))]
         actual = [
                 ObjectThing(a=1, b=3, c=3, d=4, e=5)]
@@ -174,9 +172,9 @@ class TestCompare(unittest.TestCase):
 
     def test_unordered_comparison_object_dict_multiple_items(self):
         expected = [
-                ObjectDictParsingHint(dict(a=1, b=2)),
-                ObjectDictParsingHint(dict(a=2, b=3)),
-                ObjectDictParsingHint(dict(a=3, b=4))]
+                compare.ObjectDictParsingHint(dict(a=1, b=2)),
+                compare.ObjectDictParsingHint(dict(a=2, b=3)),
+                compare.ObjectDictParsingHint(dict(a=3, b=4))]
         actual = [ObjectThing(a=2, b=3),
                   ObjectThing(a=2, b=1),
                   ObjectThing(a=3, b=2)]

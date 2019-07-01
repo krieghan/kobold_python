@@ -25,6 +25,9 @@ class NotPresent(object):
        or wasn't supplied'''
     pass
 
+class InvalidMatch(Exception):
+    pass
+
 class ValidationError(Exception):
     pass
 
@@ -114,39 +117,47 @@ class ListDiff(list):
         self.with_positions.append(value)
 
 
-def get_parsing_hint(rule):
-    class ParsingHint(object):
-        '''Tells the comparison function to parse the 
-           second argument ("actual") in a specific way to
-           get a simple data-structure'''
+class ParsingHint(object):
+    '''Tells the comparison function to parse the 
+       second argument ("actual") in a specific way to
+       get a simple data-structure'''
 
-        def __init__(self, payload):
-            '''Rules'''
-            self.payload = payload
-            self.rule = rule
+    def __init__(self, payload):
+        '''Rules'''
+        self.payload = payload
 
-        def parse(self, thing_to_parse):
-            if thing_to_parse is NotPresent:
-                return NotPresent
+    def parse(self, thing_to_parse):
+        if thing_to_parse is NotPresent:
+            return NotPresent
 
-            if self.rule == 'json':
-                return json.loads(thing_to_parse)
-            elif self.rule == 'object_dict':
-                return thing_to_parse.__dict__
-            elif self.rule == 'object_attr':
-                attr_dict = {}
-                for (key, value) in self.payload.items():
-                    attr_dict[key] = getattr(
-                            thing_to_parse, 
-                            key, 
-                            NotPresent)
-                return attr_dict
+        result = self.sub_parse(thing_to_parse)
+        return result
 
-    return ParsingHint
+    def sub_parse(self, thing_to_parse):
+        return thing_to_parse
 
-JSONParsingHint = get_parsing_hint('json')
-ObjectDictParsingHint = get_parsing_hint('object_dict')
-ObjectAttrParsingHint = get_parsing_hint('object_attr')
+
+class JSONParsingHint(ParsingHint):
+    def sub_parse(self, thing_to_parse):
+        try:
+            return json.loads(thing_to_parse)
+        except (TypeError, json.decoder.JSONDecodeError):
+            raise InvalidMatch
+
+class ObjectDictParsingHint(ParsingHint):
+    def sub_parse(self, thing_to_parse):
+        return thing_to_parse.__dict__
+
+class ObjectAttrParsingHint(ParsingHint):
+    def sub_parse(self, thing_to_parse):
+        attr_dict = {}
+        for (key, value) in self.payload.items():
+            attr_dict[key] = getattr(
+                    thing_to_parse, 
+                    key, 
+                    NotPresent)
+        return attr_dict
+
 
 class Compare(object):
     @classmethod
@@ -154,37 +165,6 @@ class Compare(object):
                 expected,
                 actual,
                 type_compare=None):
-        '''
-        Compare two arguments against each other.  If they are 
-        dicts or lists, recursively compare their components.
-        Return the difference.  If there is no difference, return the string
-        'match'.  
-
-        The third, optional argument is type_compare, which gives compare
-        some information about how it should do matching.  The value may
-        be either a string or a dictionary.  If it is a dictionary,
-        the two keys are "hash" and "ordered".  If type_compare is a 
-        string, the value is treated as the value for "hash".  
-
-        The hash key may either be "full" or "existing".  Full means that
-        two dictionaries must match entirely.  Existing means that only
-        the keys in the first dictionary must match in the second
-        dictionary (ie. the keys that are only in the second dictionary
-        are ignored).
-
-        The ordered key may be either True or False.  If it is True,
-        lists that are compared against each other are expected
-        to be ordered the same way.  If it is False, lists that are
-        compared against each other are expected to have the same
-        elements, but in any order.
-
-        hash defaults to "full", and ordered defaults to True.
-
-        The hash comparison mode may be overridden in a sub-hash, 
-        by specifying a special key "__compare".  The mode names
-        are the same - "full" and "existing"
-        '''
-
         if type_compare is None:
             type_compare = {}
         elif isinstance(type_compare, str):
@@ -208,11 +188,14 @@ class Compare(object):
                 return 'match'
             else:
                 return ('regex: %s' % expected.pattern, actual)
-        elif (type(expected).__name__ == 'ParsingHint'):
-            return cls.compare(
-                    expected.payload,
-                    expected.parse(actual),
-                    type_compare)
+        elif isinstance(expected, ParsingHint):
+            try:
+                return cls.compare(
+                        expected.payload,
+                        expected.parse(actual),
+                        type_compare)
+            except InvalidMatch:
+                return (expected, actual)
         elif (acts_like_a_hash(expected) and 
               acts_like_a_hash(actual)):
             return cls.hash_compare(expected, 
@@ -484,10 +467,24 @@ class Compare(object):
             return cls.display_list(element, other_element, iter_type=list)
         elif type(element) == pattern_type:
             return 'regex: %s' % element.pattern
-        elif type(other_element).__name__ == 'ParsingHint':
-            return cls.display(other_element.parse(element), other_element.payload)
-        elif type(element).__name__ == 'ParsingHint':
-            return cls.display(element.payload, element.parse(other_element))
+        elif isinstance(other_element, ParsingHint):
+            try:
+                return cls.display(
+                    other_element.parse(element),
+                    other_element.payload)
+            except InvalidMatch:
+                return cls.display(
+                        element,
+                        other_element.payload)
+        elif isinstance(element, ParsingHint):
+            try:
+                return cls.display(
+                        element.payload,
+                        element.parse(other_element))
+            except InvalidMatch:
+                return cls.display(
+                        element.payload,
+                        other_element)
         else:
             return element
 
@@ -505,12 +502,12 @@ class Compare(object):
         display_list = []
 
         for i in range(max_len):
-            if i > len(one_list):
+            if i > len(one_list) - 1:
                 element = NotPresent
             else:
                 element = one_list[i]
 
-            if i > len(other_list):
+            if i > len(other_list) - 1:
                 other_element = NotPresent
             else:
                 other_element = other_list[i]
