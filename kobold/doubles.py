@@ -57,6 +57,9 @@ class StubFunction(object):
         else:
             return self.to_return
 
+    def set_original_reference(self, original_reference):
+        self.original_reference = original_reference
+
 class StubCoroutine(StubFunction):
     async def __call__(self, *args, **kwargs):
         if self.to_raise:
