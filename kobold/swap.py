@@ -1,6 +1,6 @@
 import asyncio
 
-from kobold import doubles
+from kobold import compare, doubles
 
 class SafeSwap(object):
     '''Instances of this class manage runtime replacements of members,
@@ -19,7 +19,7 @@ class SafeSwap(object):
            This can be undone with rollback()'''
         key = self.get_key(host, member_name)
         if not key in self.registry:
-            self.registry[key] = (host, getattr(host, member_name, None))
+            self.registry[key] = (host, getattr(host, member_name, compare.NotPresent))
 
         setattr(host, member_name, new_member)
         if getattr(new_member, 'set_original_reference', None) is not None:
@@ -105,13 +105,21 @@ class SafeSwap(object):
         '''Rollback a specific replacement'''
         key = self.get_key(host, member_name)
         (host, original_member) = self.registry[key]
-        setattr(host, member_name, original_member)
+        if original_member is compare.NotPresent:
+            delattr(host, member_name)
+        else:
+            setattr(host, member_name, original_member)
+
         del self.registry[key]
 
     def rollback(self):
         '''Rollback all replacements (at the end of a test, for instance)'''
         for ((host_name, member_name), (host, original_member)) in self.registry.items():
-            setattr(host, member_name, original_member)
+            if original_member is compare.NotPresent:
+                delattr(host, member_name)
+            else:
+                setattr(host, member_name, original_member)
+        self.registry = {}
 
     def get_key(self,
                 host,
