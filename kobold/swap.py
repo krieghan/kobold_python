@@ -13,15 +13,34 @@ class SafeSwap(object):
              host,
              member_name,
              new_member,
-             default_original=False):
+             default_original=False,
+             swap_type='member'):
         '''Given a host object, a member name, and some other object,
            replace the member of that name on that host with the given object.
            This can be undone with rollback()'''
         key = self.get_key(host, member_name)
         if not key in self.registry:
-            self.registry[key] = (host, getattr(host, member_name, compare.NotPresent))
+            if swap_type == 'member':
+                original = getattr(host, member_name, compare.NotPresent)
+            elif swap_type == 'key':
+                original = host.get(member_name)
 
-        setattr(host, member_name, new_member)
+            self.registry[key] = (
+                host,
+                original,
+                swap_type)
+
+        if swap_type == 'member':
+            if new_member is compare.NotPresent:
+                delattr(host, member_name)
+            else:
+                setattr(host, member_name, new_member)
+        elif swap_type == 'key':
+            if new_member is compare.NotPresent:
+                del host[member_name]
+            else:
+                host[member_name] = new_member
+
         if getattr(new_member, 'set_original_reference', None) is not None:
             new_member.set_original_reference(self.registry[key][1])
 
@@ -45,7 +64,7 @@ class SafeSwap(object):
         key = self.get_key(host, member_name)
         proxy = proxy_factory(stub_function_factory=stub_function_factory)
         self.swap(host, member_name, proxy)
-        (host, original_member) = self.registry[key]
+        (host, original_member, swap_type) = self.registry[key]
         proxy.stub_function.calls(original_member)
         return proxy
 
@@ -104,25 +123,30 @@ class SafeSwap(object):
     def unswap(self, host, member_name):
         '''Rollback a specific replacement'''
         key = self.get_key(host, member_name)
-        (host, original_member) = self.registry[key]
-        if original_member is compare.NotPresent:
-            delattr(host, member_name)
-        else:
-            setattr(host, member_name, original_member)
-
+        (host, original_member, swap_type) = self.registry[key]
+        self._unswap(host, member_name, original_member, swap_type)
         del self.registry[key]
 
-    def rollback(self):
-        '''Rollback all replacements (at the end of a test, for instance)'''
-        for ((host_name, member_name), (host, original_member)) in self.registry.items():
+    def _unswap(self, host, member_name, original_member, swap_type):
+        if swap_type == 'member':
             if original_member is compare.NotPresent:
                 delattr(host, member_name)
             else:
                 setattr(host, member_name, original_member)
+        elif swap_type == 'key':
+            if original_member is compare.NotPresent:
+                del host[member_name]
+            else:
+                host[member_name] = original_member
+
+    def rollback(self):
+        '''Rollback all replacements (at the end of a test, for instance)'''
+        for ((host_name, member_name),
+             (host, original_member, swap_type)) in self.registry.items():
+            self._unswap(host, member_name, original_member, swap_type)
         self.registry = {}
 
     def get_key(self,
                 host,
                 member_name):
         return (id(host), member_name)
-
