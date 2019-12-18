@@ -65,7 +65,7 @@ class DontCare(object):
     def validate(self):
         if self.rule == 'isinstance':
             if self.options.get('of_class') is None:
-                raise ValidationError('isinstance dontcares must have an "of_class" option specivied')
+                raise ValidationError('isinstance dontcares must have an "of_class" option specified')
         
 
     def compare_with(self, other_thing):
@@ -94,7 +94,7 @@ class DontCare(object):
         elif self.rule is None or self.rule == 'no_rules':
             return True
         else:
-            raise NotImplementedError('DontCare rule {} not recognized'.format(self.rule))
+            raise ValidationError('DontCare rule {} not recognized'.format(self.rule))
         
 class ListDiff(list):
     def __init__(self, arr=None, display_type=list):
@@ -169,11 +169,16 @@ class Compare(object):
             type_compare = {}
         elif isinstance(type_compare, str):
             type_compare = {'hash' : type_compare,
+                            'list': 'full',
                             'ordered' : True}
         default_type_compare = {'hash' : 'full',
+                                'list': 'full',
                                 'ordered' : True}
         type_compare =\
             combine(default_type_compare, type_compare)
+        if type_compare['ordered'] and type_compare['list'] == 'existing':
+            raise ValidationError(
+                'Ordered list compare must always be "full", not "existing"')
 
         if type(expected) == DontCare:
             if expected.compare_with(actual):
@@ -407,12 +412,24 @@ class Compare(object):
             else:
                 actual_return.append_match()
 
-        if (len(expected_return) == 0 and
-            len(actual_return) == 0):
-            return 'match'
+        if type_compare['list'] == 'full':
+            if (len(expected_return) == 0 and
+                len(actual_return) == 0):
+                return 'match'
+            else:
+                return (expected_return.display(),
+                        actual_return.display())
+        elif type_compare['list'] == 'existing':
+            if len(expected_return) == 0:
+                return 'match'
+            else:
+                return (expected_return.display(),
+                        actual_return.display())
         else:
-            return (expected_return.display(),
-                    actual_return.display())
+            raise NotImplementedError(
+                'Invalid value for list match type_compare '
+                'setting: {}'.format(
+                    type_compare['list']))
                                  
     @classmethod
     def list_compare(cls,

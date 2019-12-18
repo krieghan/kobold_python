@@ -1,12 +1,19 @@
 import json
+import re
 
 from kobold.compare import compare
 
+
 def parse_body(content_type, content):
+    if content_type is None:
+        return content
     if content_type == 'application/json':
+        return json.loads(content)
+    elif re.compile('application/json;.*').search(content_type):
         return json.loads(content)
     else:
         return content
+
 
 def response_matches(expected,
                      response,

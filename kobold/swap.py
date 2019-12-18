@@ -77,7 +77,10 @@ class SafeSwap(object):
         if asyncio.iscoroutinefunction(decorated_function):
             async def decorator(*args, **kwargs):
                 if before:
-                    before(*args, **kwargs)
+                    if asyncio.iscoroutinefunction(before):
+                        await before(*args, **kwargs)
+                    else:
+                        before(*args, **kwargs)
                 try:
                     ret = await decorated_function(*args, **kwargs)
                 except Exception as e:
@@ -86,7 +89,10 @@ class SafeSwap(object):
                     else:
                         raise
                 if after:
-                    after(ret, *args, **kwargs)
+                    if asyncio.iscoroutinefunction(after):
+                        await after(ret, *args, **kwargs)
+                    else:
+                        after(ret, *args, **kwargs)
                 return ret
         else:
             def decorator(*args, **kwargs):
