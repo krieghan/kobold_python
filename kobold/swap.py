@@ -23,7 +23,7 @@ class SafeSwap(object):
             if swap_type == 'member':
                 original = getattr(host, member_name, compare.NotPresent)
             elif swap_type == 'key':
-                original = host.get(member_name)
+                original = host.get(member_name, compare.NotPresent)
 
             self.registry[key] = (
                 host,
@@ -37,7 +37,8 @@ class SafeSwap(object):
                 setattr(host, member_name, new_member)
         elif swap_type == 'key':
             if new_member is compare.NotPresent:
-                del host[member_name]
+                if host.get(member_name, compare.NotPresent) is not compare.NotPresent:
+                    del host[member_name]
             else:
                 host[member_name] = new_member
 
@@ -141,7 +142,9 @@ class SafeSwap(object):
                 setattr(host, member_name, original_member)
         elif swap_type == 'key':
             if original_member is compare.NotPresent:
-                del host[member_name]
+                if (host.get(member_name, compare.NotPresent)
+                        is not compare.NotPresent):
+                    del host[member_name]
             else:
                 host[member_name] = original_member
 
