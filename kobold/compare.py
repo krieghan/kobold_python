@@ -13,6 +13,7 @@ pattern_type = getattr(re, '_pattern_type', None)
 if pattern_type is None:
     pattern_type = getattr(re, 'Pattern')
 
+
 def compare(expected, actual, type_compare=None):
     '''A wrapper around Compare.compare'''
     return Compare.compare(
@@ -20,16 +21,20 @@ def compare(expected, actual, type_compare=None):
             actual,
             type_compare=type_compare)
 
+
 class NotPresent(object):
     '''Used to explicitly specify that something isn't present,
        or wasn't supplied'''
     pass
 
+
 class InvalidMatch(Exception):
     pass
 
+
 class ValidationError(Exception):
     pass
+
 
 class DontCare(object):
     '''Used as the "expected" argument in a comparison to mean "I don't 
@@ -144,9 +149,11 @@ class JSONParsingHint(ParsingHint):
         except (TypeError, json.decoder.JSONDecodeError):
             raise InvalidMatch
 
+
 class ObjectDictParsingHint(ParsingHint):
     def sub_parse(self, thing_to_parse):
         return thing_to_parse.__dict__
+
 
 class ObjectAttrParsingHint(ParsingHint):
     def sub_parse(self, thing_to_parse):
@@ -157,6 +164,14 @@ class ObjectAttrParsingHint(ParsingHint):
                     key, 
                     NotPresent)
         return attr_dict
+
+
+class OrderedList(list):
+    pass
+
+
+class UnorderedList(list):
+    pass
 
 
 class Compare(object):
@@ -451,7 +466,12 @@ class Compare(object):
         else:
             isset = False
 
-        if type_compare['ordered'] and not isset:
+        if (isinstance(expected, OrderedList) or
+                (type_compare['ordered'] and 
+                    not isset and 
+                    not isinstance(expected, UnorderedList)
+                )
+            ):
             ret = cls.ordered_list_compare(expected,
                                            actual,
                                            type_compare,
