@@ -158,20 +158,22 @@ def get_stub_class(
                 
 
 class Route(object):
-    def __init__(self, condition, stub_type, stub_value):
+    def __init__(self, condition, stub_type, stub_value, priority=0):
         self.condition = condition
         self.stub_type = stub_type
         self.stub_value = stub_value
+        self.priority = priority
 
     def select(self):
         return (self.condition, self.stub_type, self.stub_value)
 
 
 class RotatingRoute(object):
-    def __init__(self, condition, routes):
+    def __init__(self, condition, routes, priority=0):
         self.condition = condition
         self.routes = routes
         self.index = 0
+        self.priority = priority
 
     def select(self):
         stub_type, stub_value = self.routes[self.index]
@@ -198,11 +200,16 @@ class RoutableStubFunction(object):
             stub_type=None,
             stub_value=None,
             route=None,
-            key=None):
+            key=None,
+            route_priority=0):
         if key is None:
             key = uuid.uuid4().hex
         if route is None:
-            route = Route(condition, stub_type, stub_value)
+            route = Route(
+                condition,
+                stub_type,
+                stub_value,
+                priority=route_priority)
 
         self.routes[key] = route
 
@@ -238,8 +245,9 @@ class RoutableStubFunction(object):
                         'self': self.host}
                     condition_self = condition.get('self')
                     if (condition_self is not None and 
-                        isinstance(condition_self, dict)):
-                        condition['self'] = compare.ObjectAttrParsingHint(
+                            isinstance(condition_self, dict)):
+                        condition['self'] =\
+                            compare.hints.ObjectAttrParsingHint(
                                 condition_self)
                 else:
                     thing_to_compare = kwargs
@@ -258,7 +266,17 @@ class RoutableStubFunction(object):
             if self.default_route:
                 candidates.append(('default', self.default_route))
 
+        candidates = self.filter_candidates_for_priority(candidates)
+
         return candidates
+
+    def filter_candidates_for_priority(self, candidates):
+        if len(candidates) > 1:
+            priorities = sorted([x[1].priority for x in candidates])
+            best_priority = priorities[0]
+            return [x for x in candidates if x[1].priority == best_priority]
+        else:
+            return candidates
 
     def __get__(self, obj, objtype):
         self.host = obj
@@ -271,7 +289,11 @@ class RoutableStubFunction(object):
             raise StubRoutingException("More than one route candidate for stub: %s" % candidates)
 
         if len(candidates) == 0:
-            raise StubRoutingException("No route candidates for stub {} {}".format(args, kwargs))
+            raise StubRoutingException(
+                "No route candidates for stub {} {}.  Routes: {}".format(
+                    args,
+                    kwargs,
+                    self.routes))
 
         key, route = candidates[0]
         calls_for_key = self.calls_by_key.get(key)
@@ -314,9 +336,12 @@ class RoutableStubCoroutine(RoutableStubFunction):
             raise StubRoutingException("More than one route candidate for stub: %s" % candidates)
 
         if len(candidates) == 0:
+            breakpoint()
             raise StubRoutingException(
-                "No route candidates for stub: {}; {}".format(
-                    args, kwargs))
+                "No route candidates for stub: {}; {}.  \n\nRoutes: {}".format(
+                    args,
+                    kwargs,
+                    {k: r.condition for (k, r) in self.routes.items()}))
 
         key, route = candidates[0]
 

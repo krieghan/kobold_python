@@ -4,10 +4,19 @@ import six
 
 from dateutil import parser
 
+import kobold
+from kobold import NotPresent
 from kobold.hash_functions import (
         combine,
         acts_like_a_hash,
         acts_like_a_list)
+from . import hints
+from .hints import (
+    JSONParsingHint,
+    Base64Hint,
+    ObjectAttrParsingHint,
+    ObjectDictParsingHint,
+    ParsingHint)
 
 pattern_type = getattr(re, '_pattern_type', None)
 if pattern_type is None:
@@ -22,20 +31,6 @@ def compare(expected, actual, type_compare=None):
             type_compare=type_compare)
 
 
-class NotPresent(object):
-    '''Used to explicitly specify that something isn't present,
-       or wasn't supplied'''
-    pass
-
-
-class InvalidMatch(Exception):
-    pass
-
-
-class ValidationError(Exception):
-    pass
-
-
 class DontCare(object):
     '''Used as the "expected" argument in a comparison to mean "I don't 
        care what the 'actual' object is, as long as some rules hold."  
@@ -44,7 +39,7 @@ class DontCare(object):
        Rules:
 
        not_none_or_missing: The second argument can be anything,
-       as long as it is neither None nor NotPresent.
+       as long as it is neither None nor kobold.NotPresent.
        
        list: The second argument can be anything, as long as it is
        an instance of list.
@@ -70,7 +65,7 @@ class DontCare(object):
     def validate(self):
         if self.rule == 'isinstance':
             if self.options.get('of_class') is None:
-                raise ValidationError('isinstance dontcares must have an "of_class" option specified')
+                raise kobold.ValidationError('isinstance dontcares must have an "of_class" option specified')
         
 
     def compare_with(self, other_thing):
@@ -99,8 +94,9 @@ class DontCare(object):
         elif self.rule is None or self.rule == 'no_rules':
             return True
         else:
-            raise ValidationError('DontCare rule {} not recognized'.format(self.rule))
+            raise kobold.ValidationError('DontCare rule {} not recognized'.format(self.rule))
         
+
 class ListDiff(list):
     def __init__(self, arr=None, display_type=list):
         if arr is None:
@@ -122,56 +118,20 @@ class ListDiff(list):
         self.with_positions.append(value)
 
 
-class ParsingHint(object):
-    '''Tells the comparison function to parse the 
-       second argument ("actual") in a specific way to
-       get a simple data-structure'''
-
-    def __init__(self, payload):
-        '''Rules'''
-        self.payload = payload
-
-    def parse(self, thing_to_parse):
-        if thing_to_parse is NotPresent:
-            return NotPresent
-
-        result = self.sub_parse(thing_to_parse)
-        return result
-
-    def sub_parse(self, thing_to_parse):
-        return thing_to_parse
-
-
-class JSONParsingHint(ParsingHint):
-    def sub_parse(self, thing_to_parse):
-        try:
-            return json.loads(thing_to_parse)
-        except (TypeError, json.decoder.JSONDecodeError):
-            raise InvalidMatch
-
-
-class ObjectDictParsingHint(ParsingHint):
-    def sub_parse(self, thing_to_parse):
-        return thing_to_parse.__dict__
-
-
-class ObjectAttrParsingHint(ParsingHint):
-    def sub_parse(self, thing_to_parse):
-        attr_dict = {}
-        for (key, value) in self.payload.items():
-            attr_dict[key] = getattr(
-                    thing_to_parse, 
-                    key, 
-                    NotPresent)
-        return attr_dict
-
-
 class OrderedList(list):
     pass
 
 
 class UnorderedList(list):
     pass
+
+class StructuredString(object):
+    '''An attempt to provide recursive comparison for strings'''
+
+    def __init__(self, regex, arguments):
+        self.regex = regex
+        self.arguments = arguments
+
 
 
 class Compare(object):
@@ -192,7 +152,7 @@ class Compare(object):
         type_compare =\
             combine(default_type_compare, type_compare)
         if type_compare['ordered'] and type_compare['list'] == 'existing':
-            raise ValidationError(
+            raise kobold.ValidationError(
                 'Ordered list compare must always be "full", not "existing"')
 
         if type(expected) == DontCare:
@@ -208,13 +168,13 @@ class Compare(object):
                 return 'match'
             else:
                 return ('regex: %s' % expected.pattern, actual)
-        elif isinstance(expected, ParsingHint):
+        elif isinstance(expected, hints.ParsingHint):
             try:
                 return cls.compare(
                         expected.payload,
                         expected.parse(actual),
                         type_compare)
-            except InvalidMatch:
+            except kobold.InvalidMatch:
                 return (expected, actual)
         elif (acts_like_a_hash(expected) and 
               acts_like_a_hash(actual)):
@@ -232,6 +192,13 @@ class Compare(object):
                                     actual,
                                     type_compare,
                                     iter_type=list)
+
+        elif (isinstance(expected, StructuredString) and 
+                isinstance(actual, six.string_types)):
+            return cls.structured_string_compare(
+                expected,
+                actual,
+                type_compare)
 
         else:
             if expected == actual:
@@ -271,11 +238,11 @@ class Compare(object):
         for key in keys:
             if key in type_compare['dontcare_keys']:
                 result = cls.compare(DontCare(), 
-                                     actual.get(key, NotPresent),
+                                     actual.get(key, kobold.NotPresent),
                                      type_compare)
             else:
-                result = cls.compare(expected.get(key, NotPresent),
-                                     actual.get(key, NotPresent),
+                result = cls.compare(expected.get(key, kobold.NotPresent),
+                                     actual.get(key, kobold.NotPresent),
                                      type_compare)
 
             if result != 'match':
@@ -301,11 +268,11 @@ class Compare(object):
             if len(expected) > i:
                 expected_value = expected[i]
             else:
-                expected_value = NotPresent
+                expected_value = kobold.NotPresent
             if len(actual) > i:
                 actual_value = actual[i]
             else:
-                actual_value = NotPresent
+                actual_value = kobold.NotPresent
             match = True
             result = cls.compare(expected_value,
                                  actual_value,
@@ -386,14 +353,14 @@ class Compare(object):
                 missing_expected = expected[missing_expected_index]
             else:
                 missing_expected_index = None
-                missing_expected = NotPresent
+                missing_expected = kobold.NotPresent
 
             if i < len(missing_actual_indexes):
                 missing_actual_index = missing_actual_indexes[i]
                 missing_actual = actual[missing_actual_index]
             else:
                 missing_actual_index = None
-                missing_actual = NotPresent
+                missing_actual = kobold.NotPresent
 
             displayed_expected = cls.display(
                     missing_expected,
@@ -504,21 +471,21 @@ class Compare(object):
             return cls.display_list(element, other_element, iter_type=list)
         elif type(element) == pattern_type:
             return 'regex: %s' % element.pattern
-        elif isinstance(other_element, ParsingHint):
+        elif isinstance(other_element, hints.ParsingHint):
             try:
                 return cls.display(
                     other_element.parse(element),
                     other_element.payload)
-            except InvalidMatch:
+            except kobold.InvalidMatch:
                 return cls.display(
                         element,
                         other_element.payload)
-        elif isinstance(element, ParsingHint):
+        elif isinstance(element, hints.ParsingHint):
             try:
                 return cls.display(
                         element.payload,
                         element.parse(other_element))
-            except InvalidMatch:
+            except kobold.InvalidMatch:
                 return cls.display(
                         element.payload,
                         other_element)
@@ -540,16 +507,42 @@ class Compare(object):
 
         for i in range(max_len):
             if i > len(one_list) - 1:
-                element = NotPresent
+                element = kobold.NotPresent
             else:
                 element = one_list[i]
 
             if i > len(other_list) - 1:
-                other_element = NotPresent
+                other_element = kobold.NotPresent
             else:
                 other_element = other_list[i]
 
             display_list.append(cls.display(element, other_element))
         return iter_type(display_list)
+
+    @classmethod
+    def structured_string_compare(cls, expected, actual, type_compare={}):
+        default_type_compare =\
+            {'hash' : 'full',
+             'dontcare_keys' : [],
+             'ordered' : True}
+        type_compare =\
+            combine(default_type_compare, type_compare)
+
+        match = expected.regex.match(actual)
+        if match:
+            groups = match.groups()
+            return cls.compare(
+                expected.arguments,
+                match.groups(),
+                type_compare=type_compare)
+        else:
+            return (
+                'structured string regex: {}'.format(
+                    expected.regex.pattern),
+                actual)
+                        
+
+        
+
 
 

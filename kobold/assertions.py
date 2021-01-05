@@ -1,5 +1,4 @@
-from kobold.response import response_matches
-from kobold.compare import compare
+import kobold
 
 def assert_response_matches(expected,
                             response,
@@ -12,7 +11,7 @@ def assert_response_matches(expected,
 
     if type_compare is None:
         type_compare = {}
-    result = response_matches(expected,
+    result = kobold.response.response_matches(expected,
                               response,
                               type_compare=type_compare)
     raise_if_not_match(result, exception_context=exception_context)
@@ -29,7 +28,7 @@ def assert_equal(
 
     if type_compare is None:
         type_compare = {}
-    result = compare(expected, 
+    result = kobold.compare.compare(expected, 
                      actual,
                      type_compare=type_compare)
     raise_if_not_match(result, exception_context=exception_context)

@@ -1,7 +1,7 @@
 import json
 import re
 
-from kobold.compare import compare
+from kobold import compare
 
 
 def parse_body(content_type, content):
@@ -73,6 +73,6 @@ def response_matches(expected,
               'headers' : response.headers,
               'body' : parse_body(content_type, response.data)}
 
-    return compare(expected, 
+    return compare.compare(expected, 
                    actual,
                    type_compare)

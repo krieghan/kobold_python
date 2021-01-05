@@ -1,4 +1,4 @@
-from kobold import compare
+import kobold
 import six
 
 
@@ -47,8 +47,8 @@ def deep_combine(default, extra):
     keys.update(extra.keys())
     new = {}
     for key in keys:
-        default_for_key = default.get(key, compare.NotPresent)
-        extra_for_key = extra.get(key, compare.NotPresent)
+        default_for_key = default.get(key, kobold.NotPresent)
+        extra_for_key = extra.get(key, kobold.NotPresent)
         if (isinstance(default_for_key, dict) and 
             isinstance(extra_for_key, dict)):
             new[key] = deep_combine(
@@ -56,7 +56,7 @@ def deep_combine(default, extra):
                     extra_for_key)
         else:
             new[key] = default_for_key
-            if extra_for_key is not compare.NotPresent:
+            if extra_for_key is not kobold.NotPresent:
                 new[key] = extra_for_key
     return new
 

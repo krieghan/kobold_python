@@ -66,21 +66,21 @@ class TestCompare(unittest.TestCase):
                     [1, 4, 3]))
 
     def test_parseable_json_dict(self):
-        expected = compare.JSONParsingHint({'a' : 1})
+        expected = compare.hints.JSONParsingHint({'a' : 1})
         actual = '{"a" : 1}'
         self.assertEqual(
                 'match',
                 compare.compare(expected, actual))
 
     def test_parseable_json_list(self):
-        expected = compare.JSONParsingHint([1, 2, 3])
+        expected = compare.hints.JSONParsingHint([1, 2, 3])
         actual = '[1, 2, 3]'
         self.assertEqual(
                 'match',
                 compare.compare(expected, actual))
 
     def test_parseable_json_mismatch(self):
-        expected = compare.JSONParsingHint({'a' : 1})
+        expected = compare.hints.JSONParsingHint({'a' : 1})
         actual = '{"a" : "1"}'
         self.assertEqual(
                 ({'a' : 1}, {'a' : '1'}),
@@ -106,7 +106,7 @@ class TestCompare(unittest.TestCase):
         self.assertEqual(
                 'match',
                 compare.compare(
-                    compare.ObjectDictParsingHint(expected),
+                    compare.hints.ObjectDictParsingHint(expected),
                     actual))
 
     def test_compare_notpresent_with_object_dict(self):
@@ -115,7 +115,7 @@ class TestCompare(unittest.TestCase):
                 ({'a' : 1, 'b' : 2, 'c' : 3},
                  compare.NotPresent),
                 compare.compare(
-                    compare.ObjectDictParsingHint(expected),
+                    compare.hints.ObjectDictParsingHint(expected),
                     compare.NotPresent))
 
     def test_compare_dict_with_object_dict_mismatch(self):
@@ -124,7 +124,7 @@ class TestCompare(unittest.TestCase):
         self.assertEqual(
                 ({'c' : 4}, {'c' : 3}),
                 compare.compare(
-                    compare.ObjectDictParsingHint(expected),
+                    compare.hints.ObjectDictParsingHint(expected),
                     actual))
 
     def test_list_of_objects(self):
@@ -133,14 +133,14 @@ class TestCompare(unittest.TestCase):
         self.assertEqual(
                 ([{'c' : 3}], [{'c' : 4}]),
                 compare.compare(
-                    [compare.ObjectDictParsingHint(expected)],
+                    [compare.hints.ObjectDictParsingHint(expected)],
                     actual))
     
     def test_list_of_objects_unordered(self):
         expected = [
-                compare.ObjectDictParsingHint({'a' : 1}),
-                compare.ObjectDictParsingHint({'a' : 2}),
-                compare.ObjectDictParsingHint({'a' : 3})]
+                compare.hints.ObjectDictParsingHint({'a' : 1}),
+                compare.hints.ObjectDictParsingHint({'a' : 2}),
+                compare.hints.ObjectDictParsingHint({'a' : 3})]
         actual = [
                 ObjectThing(a=4),
                 ObjectThing(a=5),
@@ -157,7 +157,7 @@ class TestCompare(unittest.TestCase):
 
     def test_unordered_comparison_object_dict_one_item(self):
         expected = [
-                compare.ObjectDictParsingHint(
+                compare.hints.ObjectDictParsingHint(
                     dict(a=1, b=2, c=3, d=4, e=5))]
         actual = [
                 ObjectThing(a=1, b=3, c=3, d=4, e=5)]
@@ -172,9 +172,9 @@ class TestCompare(unittest.TestCase):
 
     def test_unordered_comparison_object_dict_multiple_items(self):
         expected = [
-                compare.ObjectDictParsingHint(dict(a=1, b=2)),
-                compare.ObjectDictParsingHint(dict(a=2, b=3)),
-                compare.ObjectDictParsingHint(dict(a=3, b=4))]
+                compare.hints.ObjectDictParsingHint(dict(a=1, b=2)),
+                compare.hints.ObjectDictParsingHint(dict(a=2, b=3)),
+                compare.hints.ObjectDictParsingHint(dict(a=3, b=4))]
         actual = [ObjectThing(a=2, b=3),
                   ObjectThing(a=2, b=1),
                   ObjectThing(a=3, b=2)]
