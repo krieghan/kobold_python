@@ -336,7 +336,6 @@ class RoutableStubCoroutine(RoutableStubFunction):
             raise StubRoutingException("More than one route candidate for stub: %s" % candidates)
 
         if len(candidates) == 0:
-            breakpoint()
             raise StubRoutingException(
                 "No route candidates for stub: {}; {}.  \n\nRoutes: {}".format(
                     args,
