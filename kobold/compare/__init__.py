@@ -155,7 +155,10 @@ class Compare(object):
             raise kobold.ValidationError(
                 'Ordered list compare must always be "full", not "existing"')
 
-        if type(expected) == DontCare:
+        if expected is DontCare:
+            expected = DontCare()
+
+        if isinstance(expected, DontCare):
             if expected.compare_with(actual):
                 return 'match'
             else:
@@ -237,7 +240,7 @@ class Compare(object):
 
         for key in keys:
             if key in type_compare['dontcare_keys']:
-                result = cls.compare(DontCare(), 
+                result = cls.compare(DontCare, 
                                      actual.get(key, kobold.NotPresent),
                                      type_compare)
             else:
@@ -461,7 +464,9 @@ class Compare(object):
     # for intelligently displaying unordered diffs of lists
     @classmethod
     def display(cls, element, other_element):
-        if type(element) == DontCare:
+        if element is DontCare:
+            element = DontCare()
+        if isinstance(element, DontCare):
             return "dontcare: %s" % element.rule
         elif acts_like_a_hash(element) and acts_like_a_hash(other_element):
             return cls.display_hash(element, other_element)
