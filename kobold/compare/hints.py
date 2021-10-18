@@ -1,5 +1,6 @@
 import base64
 import json
+import pickle
 
 import kobold
 
@@ -52,5 +53,9 @@ class ObjectAttrParsingHint(ParsingHint):
 class Base64Hint(ParsingHint):
     def sub_parse(self, thing_to_parse):
         return base64.b64decode(thing_to_parse)
+
+class PickleParsingHint(ParsingHint):
+    def sub_parse(self, thing_to_parse):
+        return pickle.loads(thing_to_parse)
 
 

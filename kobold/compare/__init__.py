@@ -16,6 +16,7 @@ from .hints import (
     Base64Hint,
     ObjectAttrParsingHint,
     ObjectDictParsingHint,
+    PickleParsingHint,
     ParsingHint)
 
 pattern_type = getattr(re, '_pattern_type', None)
