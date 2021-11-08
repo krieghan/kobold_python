@@ -180,6 +180,9 @@ class RotatingRoute(object):
         self.index = (self.index + 1) % len(self.routes)
         return (self.condition, stub_type, stub_value)
 
+    def add_route(self, route):
+        self.routes.append(route)
+
 
 class RoutableStubFunction(object):
 
