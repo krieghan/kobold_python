@@ -49,7 +49,7 @@ class StubFunction(object):
         self.to_return = None
         self.to_raise = None
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, original_reference=None, **kwargs):
         if self.to_raise:
             raise self.to_raise
         elif self.to_call:
@@ -61,7 +61,7 @@ class StubFunction(object):
         self.original_reference = original_reference
 
 class StubCoroutine(StubFunction):
-    async def __call__(self, *args, **kwargs):
+    async def __call__(self, *args, original_reference=None, **kwargs):
         if self.to_raise:
             raise self.to_raise
         elif self.to_call:
@@ -88,9 +88,12 @@ class SpyFunction(object):
         if getattr(self.stub_function, 'reset', None) is not None:
             self.stub_function.reset()
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, original_reference=None, **kwargs):
         self.calls.append((args, kwargs))
-        return self.stub_function(*args, **kwargs)
+        return self.stub_function(
+            *args,
+            original_reference=original_reference,
+            **kwargs)
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -105,12 +108,18 @@ class SpyFunction(object):
             return getattr(self.stub_function, attr)
 
 class SpyCoroutine(SpyFunction):
-    async def __call__(self, *args, **kwargs):
+    async def __call__(self, *args, original_reference=None, **kwargs):
         self.calls.append((args, kwargs))
         if asyncio.iscoroutinefunction(self.stub_function.__call__):
-            return await self.stub_function(*args, **kwargs)
+            return await self.stub_function(
+                *args, 
+                original_reference=original_reference,
+                **kwargs)
         else:
-            return self.stub_function(*args, **kwargs)
+            return self.stub_function(
+                *args,
+                original_reference=original_reference,
+                **kwargs)
 
 def get_stub_class(
         methods_to_add, 
@@ -285,7 +294,7 @@ class RoutableStubFunction(object):
         self.host = obj
         return self
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, original_reference=None, **kwargs):
         candidates = self.get_candidates(args, kwargs)
 
         if len(candidates) > 1:
@@ -322,17 +331,20 @@ class RoutableStubFunction(object):
             raise stub_value
 
         if stub_type == 'original':
+            if original_reference is None:
+                original_reference = self.original_reference
+
             if self.host is compare.NotPresent:
-                to_call = self.original_reference
+                to_call = original_reference
             else:
-                to_call = self.original_reference.__get__(
+                to_call = original_reference.__get__(
                         self.host,
                         self.host.__class__)
             return to_call(*args, **kwargs)
 
 
 class RoutableStubCoroutine(RoutableStubFunction):
-    async def __call__(self, *args, **kwargs):
+    async def __call__(self, *args, original_reference=None, **kwargs):
         candidates = self.get_candidates(args, kwargs)
 
         if len(candidates) > 1:
@@ -370,10 +382,12 @@ class RoutableStubCoroutine(RoutableStubFunction):
             raise stub_value
 
         if stub_type == 'original':
+            if original_reference is None:
+                original_reference = self.original_reference
             if self.host is compare.NotPresent:
-                to_call = self.original_reference
+                to_call = original_reference
             else:
-                to_call = self.original_reference.__get__(
+                to_call = original_reference.__get__(
                         self.host,
                         self.host.__class__)
             return await to_call(*args, **kwargs)

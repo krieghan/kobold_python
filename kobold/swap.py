@@ -2,6 +2,7 @@ import asyncio
 
 from kobold import compare, doubles
 
+
 class SafeSwap(object):
     '''Instances of this class manage runtime replacements of members,
        and enable all replacements to be undone with the rollback method'''
@@ -14,6 +15,7 @@ class SafeSwap(object):
              member_name,
              new_member,
              default_original=False,
+             pass_original=False,
              swap_type='member'):
         '''Given a host object, a member name, and some other object,
            replace the member of that name on that host with the given object.
@@ -30,17 +32,27 @@ class SafeSwap(object):
                 original,
                 swap_type)
 
+        if pass_original:
+            def stub_wrapper(*args, **kwargs):
+                return new_member(
+                    *args,
+                    original_reference=self.registry[key][1],
+                    **kwargs)
+            swap_target = stub_wrapper
+        else:
+            swap_target = new_member
+        
         if swap_type == 'member':
             if new_member is compare.NotPresent:
                 delattr(host, member_name)
             else:
-                setattr(host, member_name, new_member)
+                setattr(host, member_name, swap_target)
         elif swap_type == 'key':
             if new_member is compare.NotPresent:
                 if host.get(member_name, compare.NotPresent) is not compare.NotPresent:
                     del host[member_name]
             else:
-                host[member_name] = new_member
+                host[member_name] = swap_target
 
         if getattr(new_member, 'set_original_reference', None) is not None:
             new_member.set_original_reference(self.registry[key][1])
