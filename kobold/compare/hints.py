@@ -15,6 +15,11 @@ class ParsingHint(object):
         '''Rules'''
         self.payload = payload
 
+    def __repr__(self):
+        return '{}(payload={})'.format(
+            self.__class__.__name__,
+            self.payload)
+
     def parse(self, thing_to_parse):
         if thing_to_parse is kobold.NotPresent:
             return kobold.NotPresent

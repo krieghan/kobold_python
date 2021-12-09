@@ -1,4 +1,5 @@
 import asyncio
+import fnmatch
 import types
 import uuid
 
@@ -176,6 +177,11 @@ class Route(object):
     def select(self):
         return (self.condition, self.stub_type, self.stub_value)
 
+    def __repr__(self):
+        return 'Route(condition={})'.format(self.condition)
+
+
+
 
 class RotatingRoute(object):
     def __init__(self, condition, routes, priority=0):
@@ -234,6 +240,13 @@ class RoutableStubFunction(object):
     def clear_routes(self):
         self.routes = {}
         self.default_route = None
+
+    def calls_for_pattern(self, pattern):
+        match_calls = []
+        for key, calls in self.calls_by_key.items():
+            if fnmatch.fnmatch(key, pattern):
+                match_calls.extend(calls)
+        return match_calls
 
     def set_original_reference(self, original_reference):
         self.original_reference = original_reference
