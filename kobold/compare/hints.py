@@ -12,7 +12,6 @@ class ParsingHint(object):
 
 
     def __init__(self, payload):
-        '''Rules'''
         self.payload = payload
 
     def __repr__(self):
@@ -29,6 +28,16 @@ class ParsingHint(object):
 
     def sub_parse(self, thing_to_parse):
         return thing_to_parse
+
+
+class TypeCompareHint(ParsingHint):
+    def __init__(self, payload, type_compare):
+        self.payload = payload
+        self.type_compare = type_compare
+
+    def parse(self, *args, **kwargs):
+        raise NotImplementedError(
+            'TypeCompareHint should never be used in comparisons!')
 
 
 class JSONParsingHint(ParsingHint):
@@ -62,5 +71,16 @@ class Base64Hint(ParsingHint):
 class PickleParsingHint(ParsingHint):
     def sub_parse(self, thing_to_parse):
         return pickle.loads(thing_to_parse)
+
+class MultiMatch(ParsingHint):
+    def __init__(self, payload):
+        self.payload = payload
+        self.count = 0
+
+    def add_match(self, element):
+        self.count += 1
+
+    def matched(self):
+        return self.count > 0
 
 

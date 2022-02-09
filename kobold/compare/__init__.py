@@ -14,10 +14,12 @@ from . import hints
 from .hints import (
     JSONParsingHint,
     Base64Hint,
+    MultiMatch,
     ObjectAttrParsingHint,
     ObjectDictParsingHint,
     PickleParsingHint,
-    ParsingHint)
+    ParsingHint,
+    TypeCompareHint)
 
 pattern_type = getattr(re, '_pattern_type', None)
 if pattern_type is None:
@@ -135,23 +137,41 @@ class StructuredString(object):
 
 
 
+def normalize_type_compare(type_compare, defaults=None):
+    if defaults is None:
+        defaults = {
+            'hash' : 'full',
+            'list': 'full',
+            'ordered' : True}
+
+    if isinstance(type_compare, str):
+        type_compare = {'hash': type_compare}
+    elif type_compare is None:
+        type_compare = {}
+
+    type_compare = combine(defaults, type_compare)
+    return type_compare
+
+
 class Compare(object):
     @classmethod
     def compare(cls,
                 expected,
                 actual,
                 type_compare=None):
-        if type_compare is None:
-            type_compare = {}
-        elif isinstance(type_compare, str):
-            type_compare = {'hash' : type_compare,
-                            'list': 'full',
-                            'ordered' : True}
-        default_type_compare = {'hash' : 'full',
-                                'list': 'full',
-                                'ordered' : True}
-        type_compare =\
-            combine(default_type_compare, type_compare)
+        type_compare = normalize_type_compare(
+            type_compare)
+        if isinstance(expected, hints.TypeCompareHint):
+            # If this is a TypeCompareHint, create a new type_compare
+            # based on what's on the class, but using the type_compare
+            # provided to the function as a default
+            type_compare = normalize_type_compare(
+                expected.type_compare,
+                defaults=type_compare)
+            return cls.compare(
+                expected.payload,
+                actual,
+                type_compare)
         if type_compare['ordered'] and type_compare['list'] == 'existing':
             raise kobold.ValidationError(
                 'Ordered list compare must always be "full", not "existing"')
@@ -268,16 +288,45 @@ class Compare(object):
         expected_elements = ListDiff(display_type=iter_type)
         actual_elements = ListDiff(display_type=iter_type)
 
-        for i in range(max(len(expected), len(actual))):
-            if len(expected) > i:
-                expected_value = expected[i]
-            else:
+        expected_index = 0
+        for actual_index in range(max(len(expected), len(actual))):
+            if expected_index >= len(expected):
                 expected_value = kobold.NotPresent
-            if len(actual) > i:
-                actual_value = actual[i]
+            else:
+                expected_value = expected[expected_index]
+                
+            if len(actual) > actual_index:
+                actual_value = actual[actual_index]
             else:
                 actual_value = kobold.NotPresent
-            match = True
+
+            # If this is a MultiMatch, and it's already been matched,
+            # and the *next* item in the expected list is a match,
+            # skip ahead to that item.
+            #
+            # If this is a MultiMatch but the next element is not a match,
+            # *don't* increment the expected_index for the next run,
+            # since a MultiMatch can match multiple elements in the list.
+            #
+            # If this is not a MultiMatch, always increment the 
+            # expected_index
+
+            if isinstance(expected_value, MultiMatch):
+                if expected_value.matched():
+                    lookahead_index = expected_index + 1
+                    if lookahead_index < len(expected):
+                        lookahead_value = expected[lookahead_index]
+
+                        lookahead_result = cls.compare(
+                            lookahead_value,
+                            actual_value,
+                            type_compare)
+                        if lookahead_result == 'match':
+                            expected_index += 1
+                            continue
+            else:
+                expected_index += 1
+
             result = cls.compare(expected_value,
                                  actual_value,
                                  type_compare)
@@ -311,13 +360,24 @@ class Compare(object):
         # from the "expected" and "actual" lists.  What we're left
         # with is two lists of missing indexes (one from the expected,
         # one from the actual).
+        #
+        # A lot of the complexity here is that we're iterating over
+        # lists of indexes (expected and actual) and removing items
+        # from the list as we go.  The next iteration is +1 if we don't 
+        # remove an element, but is +0 if we *do* remove an element.
+        # There should be a saner way of going about this.
         
+        multimatch_indexes = []
         missing_expected_indexes = list(range(len(expected)))
         missing_actual_indexes = list(range(len(actual)))
         expected_index_index = 0
         while expected_index_index < len(missing_expected_indexes):
             expected_index = missing_expected_indexes[expected_index_index]
             expected_element = expected[expected_index]
+            if isinstance(expected_element, MultiMatch):
+                multimatch_indexes.append(expected_index)
+                expected_index_index += 1
+                continue
             actual_index_index = 0
             while actual_index_index < len(missing_actual_indexes):
                 actual_index = missing_actual_indexes[actual_index_index]
@@ -333,6 +393,42 @@ class Compare(object):
                     break
                 actual_index_index += 1
             expected_index_index += 1
+
+        # Take a second pass through the actual list and try to 
+        # match against any MultiMatches
+        actual_index_index = 0
+        while actual_index_index < len(missing_actual_indexes):
+            actual_index = missing_actual_indexes[actual_index_index]
+            actual_element = actual[actual_index]
+            matched = []
+            for multimatch_index in multimatch_indexes:
+                expected_element = expected[multimatch_index]
+                result = cls.compare(
+                    expected_element,
+                    actual_element,
+                    type_compare)
+                if result == 'match':
+                    matched.append(expected_element)
+
+            for multimatch in matched:
+                multimatch.add_match(actual_element)
+
+            if len(matched) > 0:
+                missing_actual_indexes.pop(actual_index_index)
+            else:
+                actual_index_index += 1
+
+        # Scan the expected elements for instances of MultiMatch hints.
+        # We don't remove them in the first iteration because they can be
+        # used to match multiple elements in the list.  Now is the time
+        # to check if they've been appropriately matched.  If so,
+        # remove them so they don't show up as diffs.
+        _missing_expected_indexes = missing_expected_indexes.copy()
+        for index in _missing_expected_indexes:
+            expected_element = expected[index]
+            if isinstance(expected_element, MultiMatch):
+                if expected_element.matched():
+                    missing_expected_indexes.remove(index)
 
        
         # The remaining elements in the expected and actual
