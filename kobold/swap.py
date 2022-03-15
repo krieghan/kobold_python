@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 
 from kobold import compare, doubles
 
@@ -63,8 +64,8 @@ class SafeSwap(object):
     def install_proxy(self,
                       host,
                       member_name,
-                      proxy_factory=doubles.SpyFunction,
-                      stub_function_factory=doubles.StubFunction):
+                      proxy_factory=compare.NotPresent,
+                      stub_function_factory=compare.NotPresent):
         '''Replace a member with a function that does something else,
            and then calls that original member (this is very similar
            to the idea of dynamically decorating a function at runtime, 
@@ -74,6 +75,24 @@ class SafeSwap(object):
            original functionality.  So, the function will have the same
            result as it would without this replacement, except the spy remembers
            each call.'''
+        original_member = getattr(host, member_name)
+        if inspect.iscoroutinefunction(original_member):
+            if proxy_factory is compare.NotPresent:
+                proxy_factory = doubles.SpyCoroutine
+            if stub_function_factory is compare.NotPresent:
+                stub_function_factory = doubles.StubCoroutine
+        elif inspect.isfunction(original_member):
+            if proxy_factory is compare.NotPresent:
+                proxy_factory = doubles.SpyFunction
+            if stub_function_factory is compare.NotPresent:
+                stub_function_factory = doubles.StubFunction
+        else:
+            raise NotImplementedError(
+                'Original member {}.{} is neither '
+                'a coroutine nor a function'.format(
+                    host,
+                    member_name))
+
         key = self.get_key(host, member_name)
         proxy = proxy_factory(stub_function_factory=stub_function_factory)
         self.swap(host, member_name, proxy)

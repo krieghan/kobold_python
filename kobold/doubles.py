@@ -71,6 +71,38 @@ class StubCoroutine(StubFunction):
             return self.to_return
 
 
+class SpyCall(object):
+    def __init__(
+            self,
+            args,
+            kwargs,
+            returned=compare.NotPresent,
+            raised=compare.NotPresent,
+            from_coroutine=False):
+        self.args = args
+        self.kwargs = kwargs
+        self.returned = returned
+        self.raised = raised
+        self.from_coroutine = from_coroutine
+
+    def input(self):
+        return (args, kwargs)
+
+    def as_tuple(self):
+        if (self.returned is not compare.NotPresent and 
+                self.raised is compare.NotPresent):
+            return (self.args, self.kwargs, self.returned)
+        else:
+            return (self.args, self.kwargs, self.returned, self.raised)
+
+    def as_dict(self):
+        return {
+            'args': self.args,
+            'kwargs': self.kwargs,
+            'returned': self.returned,
+            'raised': self.raised,
+            'from_coroutine': self.from_coroutine}
+
 class SpyFunction(object):
     '''A Spy is a Test Double that makes a record of each time it is called,
        typically to be queried later.  SpyFunction saves the args and
@@ -90,11 +122,19 @@ class SpyFunction(object):
             self.stub_function.reset()
 
     def __call__(self, *args, original_reference=None, **kwargs):
-        self.calls.append((args, kwargs))
-        return self.stub_function(
-            *args,
-            original_reference=original_reference,
-            **kwargs)
+        call = SpyCall(args=args, kwargs=kwargs)
+        self.calls.append(call)
+        try:
+            to_return = self.stub_function(
+                *args,
+                original_reference=original_reference,
+                **kwargs)
+            call.returned = to_return
+        except Exception as e:
+            call.raised = e
+            raise
+
+        return to_return
 
     def __get__(self, instance, owner):
         if instance is None:
@@ -110,17 +150,27 @@ class SpyFunction(object):
 
 class SpyCoroutine(SpyFunction):
     async def __call__(self, *args, original_reference=None, **kwargs):
-        self.calls.append((args, kwargs))
-        if asyncio.iscoroutinefunction(self.stub_function.__call__):
-            return await self.stub_function(
-                *args, 
-                original_reference=original_reference,
-                **kwargs)
-        else:
-            return self.stub_function(
-                *args,
-                original_reference=original_reference,
-                **kwargs)
+        call = SpyCall(
+                args=args,
+                kwargs=kwargs)
+        self.calls.append(call)
+        try:
+            if asyncio.iscoroutinefunction(self.stub_function.__call__):
+                call.from_coroutine = True
+                to_return = await self.stub_function(
+                    *args, 
+                    original_reference=original_reference,
+                    **kwargs)
+            else:
+                to_return = self.stub_function(
+                    *args,
+                    original_reference=original_reference,
+                    **kwargs)
+        except Exception as e:
+            call.raised = e
+            raise
+        call.returned = to_return
+        return to_return
 
 def get_stub_class(
         methods_to_add, 

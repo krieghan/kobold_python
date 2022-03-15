@@ -2,6 +2,7 @@ import re
 import unittest
 
 from kobold import (
+        assertions,
         compare,
         doubles,
         swap)
@@ -184,8 +185,11 @@ class TestSpyFunction(unittest.TestCase):
         self.assertEqual(1, spy_function("apple"))
         self.assertEqual(1, spy_function(keyword="orange"))
 
-        self.assertEqual([((1,), {}), (("apple",), {}), ((), {'keyword' : 'orange'})],
-                          spy_function.calls)
+        self.assertEqual(
+            [((1,), {}, 1),
+             (("apple",), {}, 1),
+             ((), {'keyword' : 'orange'}, 1)],
+            [x.as_tuple() for x in spy_function.calls])
 
 
 class TestRoutableSpyFunction(unittest.TestCase):
@@ -199,5 +203,16 @@ class TestRoutableSpyFunction(unittest.TestCase):
         self.assertEqual(1, spy_function(1, 1))
         self.assertRaises(doubles.StubRoutingException,
                           spy_function,
-                          1, 2)
-        self.assertEqual([((1, 1), {}), ((1, 2), {})], spy_function.calls)
+                          1,
+                          2)
+        assertions.assert_match(
+            [((1, 1), 
+              {},
+              1),
+             ((1, 2), 
+              {},
+              compare.NotPresent,
+              compare.DontCare(
+                  rule='isinstance',
+                  of_class=doubles.StubRoutingException))],
+            [x.as_tuple() for x in spy_function.calls])

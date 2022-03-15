@@ -27,8 +27,12 @@ class TestInstallProxy(unittest.TestCase):
         host = Host()
         returned = host.subject('some_arg', kwarg='some_kwarg')
         self.assertEqual('original subject', returned)
-        self.assertEqual([((host, 'some_arg'), dict(kwarg='some_kwarg'))],
-                         host.subject.calls)
+        self.assertEqual(
+            [((host,
+              'some_arg'),
+              dict(kwarg='some_kwarg'),
+              'original subject')],
+            [x.as_tuple() for x in host.subject.calls])
 
     def test_coroutine_proxy(self):
         host = Host()
@@ -43,8 +47,8 @@ class TestInstallProxy(unittest.TestCase):
                 'original subject',
                 result)
         assertions.assert_match(
-            [((compare.DontCare(), '1'), {})],
-            proxy.calls)
+            [[(compare.DontCare(), '1'), {}, 'original subject']],
+            [x.as_tuple() for x in proxy.calls])
 
 
 
