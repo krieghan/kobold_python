@@ -1,3 +1,4 @@
+import asyncio
 import re
 import unittest
 
@@ -190,6 +191,69 @@ class TestSpyFunction(unittest.TestCase):
              (("apple",), {}, 1),
              ((), {'keyword' : 'orange'}, 1)],
             [x.as_tuple() for x in spy_function.calls])
+
+class TestSpyCall(unittest.TestCase):
+    def test_input(self):
+        spy_function = doubles.SpyFunction(returns=1)
+        spy_function('arg1', kwarg1='kwarg1_value')
+        assertions.assert_match(
+            (('arg1',), {'kwarg1': 'kwarg1_value'}),
+            spy_function.calls[0].input())
+
+    def test_as_tuple_return(self):
+        spy_function = doubles.SpyFunction(returns=1)
+        spy_function('arg1', kwarg1='kwarg1_value')
+        assertions.assert_match(
+            (('arg1',), {'kwarg1': 'kwarg1_value'}, 1),
+            spy_function.calls[0].as_tuple())
+
+    def test_as_tuple_raise(self):
+        exception = LookupError()
+        spy_function = doubles.SpyFunction(raises=exception)
+        with self.assertRaises(LookupError):
+            spy_function('arg1', kwarg1='kwarg1_value')
+        assertions.assert_match(
+            (('arg1',),
+             {'kwarg1': 'kwarg1_value'},
+             compare.NotPresent,
+             exception),
+            spy_function.calls[0].as_tuple())
+
+    def test_as_dict_return(self):
+        spy_function = doubles.SpyFunction(returns=1)
+        spy_function('arg1', kwarg1='kwarg1_value')
+        assertions.assert_match(
+            {'args': ('arg1',),
+             'kwargs': {'kwarg1': 'kwarg1_value'},
+             'returned': 1,
+             'raised': compare.NotPresent,
+             'from_coroutine': False},
+            spy_function.calls[0].as_dict())
+
+    def test_as_dict_raise(self):
+        exception = LookupError()
+        spy_function = doubles.SpyFunction(raises=exception)
+        with self.assertRaises(LookupError):
+            spy_function('arg1', kwarg1='kwarg1_value')
+        assertions.assert_match(
+            {'args': ('arg1',),
+             'kwargs': {'kwarg1': 'kwarg1_value'},
+             'returned': compare.NotPresent,
+             'raised': exception,
+             'from_coroutine': False},
+            spy_function.calls[0].as_dict())
+
+    def test_as_dict_coroutine(self):
+        spy_function = doubles.SpyCoroutine(returns=1)
+        asyncio.get_event_loop().run_until_complete(
+            spy_function('arg1', kwarg1='kwarg1_value'))
+        assertions.assert_match(
+            {'args': ('arg1',),
+             'kwargs': {'kwarg1': 'kwarg1_value'},
+             'returned': 1,
+             'raised': compare.NotPresent,
+             'from_coroutine': True},
+            spy_function.calls[0].as_dict())
 
 
 class TestRoutableSpyFunction(unittest.TestCase):

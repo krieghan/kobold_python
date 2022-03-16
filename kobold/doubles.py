@@ -86,7 +86,7 @@ class SpyCall(object):
         self.from_coroutine = from_coroutine
 
     def input(self):
-        return (args, kwargs)
+        return (self.args, self.kwargs)
 
     def as_tuple(self):
         if (self.returned is not compare.NotPresent and 
@@ -149,6 +149,12 @@ class SpyFunction(object):
             return getattr(self.stub_function, attr)
 
 class SpyCoroutine(SpyFunction):
+    def __init__(self, stub_function_factory=StubCoroutine, *args, **kwargs):
+        super(SpyCoroutine, self).__init__(
+            stub_function_factory=stub_function_factory,
+            *args,
+            **kwargs)
+
     async def __call__(self, *args, original_reference=None, **kwargs):
         call = SpyCall(
                 args=args,

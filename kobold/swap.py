@@ -75,13 +75,22 @@ class SafeSwap(object):
            original functionality.  So, the function will have the same
            result as it would without this replacement, except the spy remembers
            each call.'''
-        original_member = getattr(host, member_name)
+        key = self.get_key(host, member_name)
+        registry_entry = self.registry.get(
+            key,
+            None)
+
+        if registry_entry is None:
+            original_member = getattr(host, member_name)
+        else:
+            original_member = registry_entry[1]
+
         if inspect.iscoroutinefunction(original_member):
             if proxy_factory is compare.NotPresent:
                 proxy_factory = doubles.SpyCoroutine
             if stub_function_factory is compare.NotPresent:
                 stub_function_factory = doubles.StubCoroutine
-        elif inspect.isfunction(original_member):
+        elif callable(original_member):
             if proxy_factory is compare.NotPresent:
                 proxy_factory = doubles.SpyFunction
             if stub_function_factory is compare.NotPresent:
@@ -93,7 +102,6 @@ class SafeSwap(object):
                     host,
                     member_name))
 
-        key = self.get_key(host, member_name)
         proxy = proxy_factory(stub_function_factory=stub_function_factory)
         self.swap(host, member_name, proxy)
         (host, original_member, swap_type) = self.registry[key]
