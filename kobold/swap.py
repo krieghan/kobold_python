@@ -130,9 +130,9 @@ class SafeSwap(object):
                         raise
                 if after:
                     if asyncio.iscoroutinefunction(after):
-                        await after(ret, *args, **kwargs)
+                        ret = await after(ret, *args, **kwargs)
                     else:
-                        after(ret, *args, **kwargs)
+                        ret = after(ret, *args, **kwargs)
                 return ret
         else:
             def decorator(*args, **kwargs):
@@ -146,7 +146,7 @@ class SafeSwap(object):
                     else:
                         raise
                 if after:
-                    after(ret, *args, **kwargs)
+                    ret = after(ret, *args, **kwargs)
                 return ret
 
         return decorator
