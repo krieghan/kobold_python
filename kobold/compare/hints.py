@@ -56,11 +56,25 @@ class ObjectDictParsingHint(ParsingHint):
 class ObjectAttrParsingHint(ParsingHint):
     def sub_parse(self, thing_to_parse):
         attr_dict = {}
-        for (key, value) in self.payload.items():
-            attr_dict[key] = getattr(
-                    thing_to_parse, 
-                    key, 
-                    kobold.NotPresent)
+        for (key, _) in self.payload.items():
+            if len(key) > 1 and key[-2:] == '()':
+                is_function = True
+                attr_key = key[:-2]
+            else:
+                is_function = False
+                attr_key = key
+
+            value = getattr(
+                thing_to_parse, 
+                attr_key, 
+                kobold.NotPresent)
+            if is_function:
+                try:
+                    value = value()
+                except Exception as e:
+                    value = e
+            
+            attr_dict[key] = value
         return attr_dict
 
 
