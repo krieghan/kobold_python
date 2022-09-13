@@ -17,4 +17,5 @@ from . import (
     compare,
     doubles,
     hash_functions,
+    html,
     response)
