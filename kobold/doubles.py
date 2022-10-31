@@ -7,6 +7,30 @@ from kobold import (
         compare,
         hash_functions)
 
+async def wrap_with_coroutine(
+        returns=None,
+        raises=None,
+        is_call=False,
+        spy_call=None):
+    if raises is not None:
+        if spy_call:
+            spy_call.raised = raises
+        raise raises
+
+    if is_call:
+        returns = await returns
+
+    if spy_call:
+        spy_call.returned = returns
+    return returns
+    '''
+    if asyncio.iscoroutine(returns):
+        return await returns
+    else:
+        return returns
+    '''
+
+
 class StubFunction(object):
     '''A Stub is a Test Double that is intended to replace a real function
        with one that just behaves as configured.  Usually, this means
@@ -26,10 +50,18 @@ class StubFunction(object):
         called.  We will return the value that the function returns.
     '''
 
-    def __init__(self, returns=None, raises=None, calls=None, *args, **kwargs):
+    def __init__(
+            self,
+            returns=None,
+            raises=None,
+            calls=None,
+            awaitable=False,
+            *args,
+            **kwargs):
         self.to_return = returns
         self.to_raise = raises
         self.to_call = calls
+        self.awaitable = awaitable
 
     def returns(self, to_return):
         '''This will make StubFunction return this value when called'''
@@ -50,25 +82,32 @@ class StubFunction(object):
         self.to_return = None
         self.to_raise = None
 
-    def __call__(self, *args, original_reference=None, **kwargs):
+    def __call__(
+            self,
+            *args,
+            original_reference=None,
+            spy_call=None,
+            **kwargs):
+        is_call = False
         if self.to_raise:
-            raise self.to_raise
+            if self.awaitable:
+                return wrap_with_coroutine(
+                    raises=self.to_raise,
+                    spy_call=spy_call)
+            else:
+                raise self.to_raise
         elif self.to_call:
-            return self.to_call(*args, **kwargs)
+            is_call = True
+            result = self.to_call(*args, **kwargs)
         else:
-            return self.to_return
-
-    def set_original_reference(self, original_reference):
-        self.original_reference = original_reference
-
-class StubCoroutine(StubFunction):
-    async def __call__(self, *args, original_reference=None, **kwargs):
-        if self.to_raise:
-            raise self.to_raise
-        elif self.to_call:
-            return await self.to_call(*args, **kwargs)
+            result = self.to_return
+        if self.awaitable:
+            return wrap_with_coroutine(
+                returns=result,
+                is_call=is_call,
+                spy_call=spy_call)
         else:
-            return self.to_return
+            return result
 
 
 class SpyCall(object):
@@ -113,6 +152,7 @@ class SpyFunction(object):
 
     def __init__(self, stub_function_factory=StubFunction, *args, **kwargs):
         self.stub_function = stub_function_factory(*args, **kwargs)
+        self.awaitable = self.stub_function.awaitable
         self.calls = []
 
     def reset(self):
@@ -122,14 +162,19 @@ class SpyFunction(object):
             self.stub_function.reset()
 
     def __call__(self, *args, original_reference=None, **kwargs):
-        call = SpyCall(args=args, kwargs=kwargs)
+        call = SpyCall(
+            args=args,
+            kwargs=kwargs,
+            from_coroutine=self.awaitable)
         self.calls.append(call)
         try:
             to_return = self.stub_function(
                 *args,
                 original_reference=original_reference,
+                spy_call=call,
                 **kwargs)
-            call.returned = to_return
+            if not self.awaitable:
+                call.returned = to_return
         except Exception as e:
             call.raised = e
             raise
@@ -147,36 +192,6 @@ class SpyFunction(object):
             return super(SpyFunction, self).__getattr__(attr)
         except AttributeError:
             return getattr(self.stub_function, attr)
-
-class SpyCoroutine(SpyFunction):
-    def __init__(self, stub_function_factory=StubCoroutine, *args, **kwargs):
-        super(SpyCoroutine, self).__init__(
-            stub_function_factory=stub_function_factory,
-            *args,
-            **kwargs)
-
-    async def __call__(self, *args, original_reference=None, **kwargs):
-        call = SpyCall(
-                args=args,
-                kwargs=kwargs)
-        self.calls.append(call)
-        try:
-            if asyncio.iscoroutinefunction(self.stub_function.__call__):
-                call.from_coroutine = True
-                to_return = await self.stub_function(
-                    *args, 
-                    original_reference=original_reference,
-                    **kwargs)
-            else:
-                to_return = self.stub_function(
-                    *args,
-                    original_reference=original_reference,
-                    **kwargs)
-        except Exception as e:
-            call.raised = e
-            raise
-        call.returned = to_return
-        return to_return
 
 def get_stub_class(
         methods_to_add, 
@@ -217,7 +232,9 @@ def get_stub_class(
         for method_name in methods_to_add:
             setattr(StubClass, method_name, SpyFunction(returns=None))
     for (method_name, return_value) in coroutines_to_add.items():
-        spy_coroutine = SpyCoroutine(returns=return_value)
+        spy_coroutine = SpyFunction(
+            returns=return_value,
+            awaitable=True)
         setattr(StubClass, method_name, spy_coroutine)
 
     return StubClass
@@ -235,8 +252,6 @@ class Route(object):
 
     def __repr__(self):
         return 'Route(condition={})'.format(self.condition)
-
-
 
 
 class RotatingRoute(object):
@@ -257,7 +272,7 @@ class RotatingRoute(object):
 
 class RoutableStubFunction(object):
 
-    def __init__(self, default_route=None, *args, **kwargs):
+    def __init__(self, default_route=None, awaitable=False, *args, **kwargs):
         self.routes = {}
         self.route_indexes = {}
         if (default_route is not None and 
@@ -266,6 +281,7 @@ class RoutableStubFunction(object):
                 'default_route must be of an instance of doubles.Route')
         self.default_route = default_route
         self.host = compare.NotPresent
+        self.awaitable = awaitable
         self.calls_by_key = {}
 
     def add_route(
@@ -303,9 +319,6 @@ class RoutableStubFunction(object):
             if fnmatch.fnmatch(key, pattern):
                 match_calls.extend(calls)
         return match_calls
-
-    def set_original_reference(self, original_reference):
-        self.original_reference = original_reference
 
     def default_original(self, original_reference):
         self.default_route = Route('default', 'callable', original_reference)
@@ -363,7 +376,12 @@ class RoutableStubFunction(object):
         self.host = obj
         return self
 
-    def __call__(self, *args, original_reference=None, **kwargs):
+    def __call__(
+            self,
+            *args,
+            original_reference=None,
+            spy_call=None,
+            **kwargs):
         candidates = self.get_candidates(args, kwargs)
 
         if len(candidates) > 1:
@@ -385,81 +403,46 @@ class RoutableStubFunction(object):
 
         (condition, stub_type, stub_value) = route.select()
         if stub_type == 'value':
-            return stub_value
+            to_return = stub_value
 
+        is_call = False
         if stub_type == 'callable':
+            is_call = True
             if self.host is compare.NotPresent:
                 to_call = stub_value
             else:
                 to_call = stub_value.__get__(
                         self.host,
                         self.host.__class__)
-            return to_call(*args, **kwargs)
+            to_return = to_call(*args, **kwargs)
 
         if stub_type == 'exception':
-            raise stub_value
+            if self.awaitable:
+                return wrap_with_coroutine(
+                    raises=stub_value,
+                    spy_call=spy_call)
+            else:
+                raise stub_value
 
         if stub_type == 'original':
+            is_call = True
             if original_reference is None:
-                original_reference = self.original_reference
-
+                raise Exception('original reference not provided')
             if self.host is compare.NotPresent:
                 to_call = original_reference
             else:
                 to_call = original_reference.__get__(
                         self.host,
                         self.host.__class__)
-            return to_call(*args, **kwargs)
+            to_return = to_call(*args, **kwargs)
 
-
-class RoutableStubCoroutine(RoutableStubFunction):
-    async def __call__(self, *args, original_reference=None, **kwargs):
-        candidates = self.get_candidates(args, kwargs)
-
-        if len(candidates) > 1:
-            raise StubRoutingException("More than one route candidate for stub: %s" % candidates)
-
-        if len(candidates) == 0:
-            raise StubRoutingException(
-                "No route candidates for stub: {}; {}.  \n\nRoutes: {}".format(
-                    args,
-                    kwargs,
-                    {k: r.condition for (k, r) in self.routes.items()}))
-
-        key, route = candidates[0]
-
-        calls_for_key = self.calls_by_key.get(key)
-        if calls_for_key is None:
-            calls_for_key = self.calls_by_key[key] = []
-
-        calls_for_key.append((args, kwargs))
-
-        (condition, stub_type, stub_value) = route.select()
-        if stub_type == 'value':
-            return stub_value
-
-        if stub_type == 'callable':
-            if self.host is compare.NotPresent:
-                to_call = stub_value
-            else:
-                to_call = stub_value.__get__(
-                        self.host,
-                        self.host.__class__)
-            return await to_call(*args, **kwargs)
-
-        if stub_type == 'exception':
-            raise stub_value
-
-        if stub_type == 'original':
-            if original_reference is None:
-                original_reference = self.original_reference
-            if self.host is compare.NotPresent:
-                to_call = original_reference
-            else:
-                to_call = original_reference.__get__(
-                        self.host,
-                        self.host.__class__)
-            return await to_call(*args, **kwargs)
+        if self.awaitable:
+            return wrap_with_coroutine(
+                to_return,
+                is_call=is_call,
+                spy_call=spy_call)
+        else:
+            return to_return
 
 
 class StubRoutingException(Exception):

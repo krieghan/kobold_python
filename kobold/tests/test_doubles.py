@@ -244,7 +244,7 @@ class TestSpyCall(unittest.TestCase):
             spy_function.calls[0].as_dict())
 
     def test_as_dict_coroutine(self):
-        spy_function = doubles.SpyCoroutine(returns=1)
+        spy_function = doubles.SpyFunction(returns=1, awaitable=True)
         asyncio.get_event_loop().run_until_complete(
             spy_function('arg1', kwarg1='kwarg1_value'))
         assertions.assert_match(

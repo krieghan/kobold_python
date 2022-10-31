@@ -55,9 +55,6 @@ class SafeSwap(object):
             else:
                 host[member_name] = swap_target
 
-        if getattr(new_member, 'set_original_reference', None) is not None:
-            new_member.set_original_reference(self.registry[key][1])
-
         if default_original:
             new_member.default_original(self.registry[key][1])
 
@@ -65,7 +62,9 @@ class SafeSwap(object):
                       host,
                       member_name,
                       proxy_factory=compare.NotPresent,
-                      stub_function_factory=compare.NotPresent):
+                      stub_function_factory=compare.NotPresent,
+                      *args,
+                      **kwargs):
         '''Replace a member with a function that does something else,
            and then calls that original member (this is very similar
            to the idea of dynamically decorating a function at runtime, 
@@ -85,12 +84,7 @@ class SafeSwap(object):
         else:
             original_member = registry_entry[1]
 
-        if inspect.iscoroutinefunction(original_member):
-            if proxy_factory is compare.NotPresent:
-                proxy_factory = doubles.SpyCoroutine
-            if stub_function_factory is compare.NotPresent:
-                stub_function_factory = doubles.StubCoroutine
-        elif callable(original_member):
+        if callable(original_member):
             if proxy_factory is compare.NotPresent:
                 proxy_factory = doubles.SpyFunction
             if stub_function_factory is compare.NotPresent:
@@ -102,7 +96,10 @@ class SafeSwap(object):
                     host,
                     member_name))
 
-        proxy = proxy_factory(stub_function_factory=stub_function_factory)
+        proxy = proxy_factory(
+            stub_function_factory=stub_function_factory,
+            *args,
+            **kwargs)
         self.swap(host, member_name, proxy)
         (host, original_member, swap_type) = self.registry[key]
         proxy.stub_function.calls(original_member)

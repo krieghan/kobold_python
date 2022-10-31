@@ -38,7 +38,8 @@ class TestInstallProxy(unittest.TestCase):
         host = Host()
         proxy = self.safe_swap.install_proxy(
             Host,
-            'subject_cr')
+            'subject_cr',
+            awaitable=True)
 
         loop = asyncio.get_event_loop()
         result = loop.run_until_complete(
@@ -94,7 +95,7 @@ class TestSwap(unittest.TestCase):
 
     def test_default_original_coroutine(self):
         loop = asyncio.get_event_loop()
-        routable_stub = doubles.RoutableStubCoroutine()
+        routable_stub = doubles.RoutableStubFunction(awaitable=True)
         routable_stub.add_route(
             {'kwarg': 1},
             stub_type='value',
