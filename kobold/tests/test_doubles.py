@@ -22,6 +22,7 @@ class Host(object):
     def test(self, *args, **kwargs):
         return 'original'
 
+
 class TestRoutableStubFunction(unittest.TestCase):
     def setUp(self):
         self.safe_swap = swap.SafeSwap()
@@ -100,8 +101,6 @@ class TestRoutableStubFunction(unittest.TestCase):
         self.assertEqual(2, stub_function(1, kwarg=1))
         self.assertEqual(4, stub_function(3, kwarg=3))
 
-
-
     def test_kwarg_with_pattern(self):
         stub_function = doubles.RoutableStubFunction()
         stub_function.add_route(
@@ -151,6 +150,246 @@ class TestRoutableStubFunction(unittest.TestCase):
 
         self.assertEqual(1, stub_function('a'))
         self.assertEqual(2, stub_function('a'))
+
+class TestMixedRoutable(unittest.TestCase):
+    def setUp(self):
+        self.safe_swap = swap.SafeSwap()
+
+    def tearDown(self):
+        self.safe_swap.rollback()
+
+    def test_args_match(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4},
+                arg_names=('a', 'b', 'c', 'd')),
+            stub_type='value',
+            stub_value=1)
+        self.assertEqual(1, stub_function(
+            1,
+            2,
+            3,
+            4))
+
+    def test_missing_arg(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4},
+                arg_names=('a', 'b', 'c', 'd')),
+            stub_type='value',
+            stub_value=1)
+        with self.assertRaises(doubles.StubRoutingException):
+            self.assertEqual(1, stub_function(
+                1,
+                2,
+                4))
+
+    def test_kwargs_match(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4},
+                arg_names=('a', 'b', 'c', 'd')),
+            stub_type='value',
+            stub_value=1)
+        self.assertEqual(1, stub_function(
+            a=1,
+            b=2,
+            c=3,
+            d=4))
+
+    def test_missing_kwarg(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4},
+                arg_names=('a', 'b', 'c', 'd')),
+            stub_type='value',
+            stub_value=1)
+        with self.assertRaises(doubles.StubRoutingException):
+            stub_function(
+                a=1,
+                c=3,
+                d=4)
+
+    def test_mixed_match(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4},
+                arg_names=('a', 'b', 'c', 'd')),
+            stub_type='value',
+            stub_value=1)
+        self.assertEqual(1, stub_function(
+            1,
+            2,
+            c=3,
+            d=4))
+
+    def test_mixed_mismatch(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4},
+                arg_names=('a', 'b', 'c', 'd')),
+            stub_type='value',
+            stub_value=1)
+        with self.assertRaises(doubles.StubRoutingException):
+            stub_function(
+                1,
+                7,
+                c=3,
+                d=4)
+
+    def test_exclusive_arg_match(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4},
+                exclusive_args={'e': 5},
+                arg_names=('a', 'b', 'c', 'd', 'e')),
+            stub_type='value',
+            stub_value=1)
+        self.assertEqual(1, stub_function(
+            1,
+            2,
+            5,
+            c=3,
+            d=4))
+
+    def test_exclusive_arg_mismatch(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4},
+                exclusive_args={'e': 5},
+                arg_names=('a', 'b', 'c', 'd', 'e')),
+            stub_type='value',
+            stub_value=1)
+        with self.assertRaises(doubles.StubRoutingException):
+            stub_function(
+                1,
+                2,
+                7,
+                c=3,
+                d=4)
+
+    def test_exclusive_arg_a_kwarg(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4},
+                exclusive_args={'e': 5},
+                arg_names=('a', 'b', 'c', 'd', 'e')),
+            stub_type='value',
+            stub_value=1)
+        with self.assertRaises(doubles.StubRoutingException):
+            stub_function(
+                1,
+                2,
+                c=3,
+                d=4,
+                e=5)
+
+    def test_exclusive_kwarg_match(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4,
+                    'e': 5},
+                arg_names=('a', 'b', 'c', 'd')),
+            stub_type='value',
+            stub_value=1)
+        self.assertEqual(1, stub_function(
+            1,
+            2,
+            c=3,
+            d=4,
+            e=5))
+
+    def test_exclusive_kwarg_mismatch(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4,
+                    'e': 5},
+                arg_names=('a', 'b', 'c', 'd')),
+            stub_type='value',
+            stub_value=1)
+        with self.assertRaises(doubles.StubRoutingException):
+            stub_function(
+                1,
+                2,
+                c=3,
+                d=4,
+                e=7)
+
+    def test_exclusive_kwarg_an_arg(self):
+        stub_function = doubles.RoutableStubFunction()
+        stub_function.add_route(
+            condition=doubles.Condition(
+                kwargs={
+                    'a': 1,
+                    'b': 2,
+                    'c': 3,
+                    'd': 4,
+                    'e': 5},
+                arg_names=('a', 'b', 'c', 'd')),
+            stub_type='value',
+            stub_value=1)
+        with self.assertRaises(doubles.StubRoutingException):
+            stub_function(
+                1,
+                2,
+                5,
+                c=3,
+                d=4)
 
 
 class TestStubFunction(unittest.TestCase):

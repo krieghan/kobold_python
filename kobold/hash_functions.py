@@ -112,6 +112,7 @@ class HashableList(list):
         new_list.extend(original_list)
         return new_list
 
+
 def make_hashable(data_structure):
     if acts_like_a_list(data_structure):
         new_data_structure = HashableList()
@@ -127,6 +128,55 @@ def make_hashable(data_structure):
         return new_data_structure
     else:
         return data_structure
+
+
+def get_from_args_and_kwargs(
+        args,
+        kwargs,
+        arg_names,
+        exclusive_args=None,
+        args_in_hash=True):
+    if exclusive_args is None:
+        exclusive_args = []
+    return_dict = {}
+    return_list = []
+    current_arg_index = 0
+    exclusive_arg_keys = set(exclusive_args)
+    for arg_name in arg_names:
+        result = kwargs.get(arg_name, kobold.compare.NotPresent)
+
+        if arg_name in exclusive_arg_keys:
+            if current_arg_index >= len(args):
+                continue
+            value = args[current_arg_index]
+            current_arg_index += 1
+            if args_in_hash:
+                return_dict[arg_name] = value
+            else:
+                return_list.append(value)
+        else:
+            if result is not kobold.compare.NotPresent:
+                return_dict[arg_name] = result
+            else:
+                if current_arg_index >= len(args):
+                    continue
+                value = args[current_arg_index]
+                current_arg_index += 1
+                return_dict[arg_name] = value
+
+
+    kwargs_keys = set(kwargs.keys())
+    exclusive_kwarg_keys = kwargs_keys.difference(arg_names)
+    for key in exclusive_kwarg_keys:
+        return_dict[key] = kwargs.get(key)
+
+    if args_in_hash:
+        return return_dict
+    else:
+        return (return_list, return_dict)
+
+
+
 
 
 

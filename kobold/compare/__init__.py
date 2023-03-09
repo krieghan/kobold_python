@@ -642,9 +642,3 @@ class Compare(object):
                 'structured string regex: {}'.format(
                     expected.regex.pattern),
                 actual)
-                        
-
-        
-
-
-

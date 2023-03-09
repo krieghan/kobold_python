@@ -23,12 +23,6 @@ async def wrap_with_coroutine(
     if spy_call:
         spy_call.returned = returns
     return returns
-    '''
-    if asyncio.iscoroutine(returns):
-        return await returns
-    else:
-        return returns
-    '''
 
 
 class StubFunction(object):
@@ -327,6 +321,13 @@ class RoutableStubFunction(object):
         candidates = []
         for key, route in self.routes.items():
             condition = route.condition
+            if isinstance(condition, Condition):
+                if condition.compare(
+                        args,
+                        kwargs) == 'match':
+                    candidates.append((key, route))
+                continue
+
             if condition == 'default':
                 continue
             
@@ -402,11 +403,11 @@ class RoutableStubFunction(object):
         calls_for_key.append((args, kwargs))
 
         (condition, stub_type, stub_value) = route.select()
+        is_call = False
+
         if stub_type == 'value':
             to_return = stub_value
-
-        is_call = False
-        if stub_type == 'callable':
+        elif stub_type == 'callable':
             is_call = True
             if self.host is compare.NotPresent:
                 to_call = stub_value
@@ -415,16 +416,14 @@ class RoutableStubFunction(object):
                         self.host,
                         self.host.__class__)
             to_return = to_call(*args, **kwargs)
-
-        if stub_type == 'exception':
+        elif stub_type == 'exception':
             if self.awaitable:
                 return wrap_with_coroutine(
                     raises=stub_value,
                     spy_call=spy_call)
             else:
                 raise stub_value
-
-        if stub_type == 'original':
+        elif stub_type == 'original':
             is_call = True
             if original_reference is None:
                 raise Exception('original reference not provided')
@@ -435,6 +434,11 @@ class RoutableStubFunction(object):
                         self.host,
                         self.host.__class__)
             to_return = to_call(*args, **kwargs)
+        else:
+            raise NotImplementedError(
+                'Unrecognized stub_type "{}".  Must be "value", "exception", '
+                '"callable" or "original"'.format(
+                    stub_type))
 
         if self.awaitable:
             return wrap_with_coroutine(
@@ -453,3 +457,28 @@ class StubRoutingException(Exception):
     pass
 
 
+class Condition:
+    def __init__(self, kwargs, arg_names, exclusive_args=None):
+        if exclusive_args is None:
+            exclusive_args = {}
+        self.kwargs = kwargs
+        self.arg_names = arg_names
+        self.exclusive_args = exclusive_args
+        self.kwargs.update(exclusive_args)
+
+    def compare(self, args, kwargs):
+        normalized_kwargs = hash_functions.get_from_args_and_kwargs(
+            args=args,
+            kwargs=kwargs,
+            arg_names=self.arg_names,
+            exclusive_args=self.exclusive_args)
+        return compare.compare(
+            self.kwargs,
+            normalized_kwargs,
+            type_compare='existing')
+
+    def update(self, kwargs):
+        self.kwargs.update(kwargs)
+
+    def __str__(self):
+        return "{}: {}".format(self.arg_names, self.kwargs)

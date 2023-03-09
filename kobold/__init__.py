@@ -4,6 +4,10 @@ class NotPresent(object):
     pass
 
 
+class Omitted(object):
+    pass
+
+
 class InvalidMatch(Exception):
     pass
 
