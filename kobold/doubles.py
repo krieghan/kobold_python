@@ -400,7 +400,7 @@ class RoutableStubFunction(object):
         if calls_for_key is None:
             calls_for_key = self.calls_by_key[key] = []
 
-        calls_for_key.append((args, kwargs))
+        calls_for_key.append(spy_call)
 
         (condition, stub_type, stub_value) = route.select()
         is_call = False
