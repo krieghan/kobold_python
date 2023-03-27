@@ -285,7 +285,8 @@ class RoutableStubFunction(object):
             stub_value=None,
             route=None,
             key=None,
-            route_priority=0):
+            route_priority=0,
+            replace_route=False):
         if key is None:
             key = uuid.uuid4().hex
         if route is None:
@@ -295,10 +296,16 @@ class RoutableStubFunction(object):
                 stub_value,
                 priority=route_priority)
 
+        if not replace_route:
+            existing_route = self.routes.get(key)
+            if existing_route is not None:
+                raise AssertionError(
+                    'Route {} is already installed'.format(key))
         self.routes[key] = route
 
         if route.condition == 'default':
             self.default_route = route
+        return route
 
     def reset(self):
         self.calls_by_key = {}
