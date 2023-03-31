@@ -1,5 +1,6 @@
 import asyncio
 import fnmatch
+import pprint
 import types
 import uuid
 
@@ -397,10 +398,9 @@ class RoutableStubFunction(object):
 
         if len(candidates) == 0:
             raise StubRoutingException(
-                "No route candidates for stub {} {}.  Routes: {}".format(
-                    args,
-                    kwargs,
-                    self.routes))
+                "No route candidates for stub\n{}\n\nRoutes:\n{}".format(
+                    pprint.pformat((args, kwargs)),
+                    pprint.pformat(dictify_routes(self.routes))))
 
         key, route = candidates[0]
         calls_for_key = self.calls_by_key.get(key)
@@ -487,5 +487,23 @@ class Condition:
     def update(self, kwargs):
         self.kwargs.update(kwargs)
 
-    def __str__(self):
-        return "{}: {}".format(self.arg_names, self.kwargs)
+    def __repr__(self):
+        return "{}\n{}".format(self.arg_names, self.kwargs)
+
+
+def dictify_routes(element):
+    '''Used to recurse through the routes dictionary to return nested
+       dictionaries (rather than instances of routes and conditions)
+       for pprint display purposes'''
+    if isinstance(element, dict):
+        return {
+            k: dictify_routes(v) for (k, v) in element.items()}
+    elif isinstance(element, Route):
+        return dictify_routes(element.condition)
+    elif isinstance(element, Condition):
+        return {
+            'arg_names': element.arg_names,
+            'kwargs': element.kwargs}
+    else:
+        return element
+

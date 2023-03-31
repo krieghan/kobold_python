@@ -1,3 +1,5 @@
+import pprint
+
 import kobold
 
 def assert_response_matches(expected,
@@ -39,9 +41,9 @@ def raise_if_not_match(result, exception_context=None):
     if result != 'match':
         expected_diff, actual_diff = result
         assertion_text =\
-            "Expected %s\nBut Got %s" %\
-                    (expected_diff,
-                     actual_diff)
+            "Expected\n\n%s\n\nBut Got\n\n%s" %\
+                    (pprint.pformat(expected_diff),
+                     pprint.pformat(actual_diff))
         if exception_context is None:
             exception_text = assertion_text
         else:
