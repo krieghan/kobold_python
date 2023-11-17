@@ -46,6 +46,8 @@ def response_matches(expected,
     describing the mismatched values in the second argument.
     '''
 
+    if expected is None:
+        expected = {}
     if type_compare is None:
         type_compare = {
                 'hash' : 'full',

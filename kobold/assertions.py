@@ -13,9 +13,10 @@ def assert_response_matches(expected,
 
     if type_compare is None:
         type_compare = {}
-    result = kobold.response.response_matches(expected,
-                              response,
-                              type_compare=type_compare)
+    result = kobold.response.response_matches(
+        expected,
+        response,
+        type_compare=type_compare)
     raise_if_not_match(result, exception_context=exception_context)
 
 def assert_equal(

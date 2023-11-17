@@ -1,4 +1,5 @@
 import base64
+import binascii
 import json
 import pickle
 import urllib.parse
@@ -81,7 +82,10 @@ class ObjectAttrParsingHint(ParsingHint):
 
 class Base64Hint(ParsingHint):
     def sub_parse(self, thing_to_parse):
-        return base64.b64decode(thing_to_parse)
+        try:
+            return base64.b64decode(thing_to_parse)
+        except binascii.Error:
+            raise kobold.InvalidMatch
 
 class PickleParsingHint(ParsingHint):
     def sub_parse(self, thing_to_parse):
@@ -105,7 +109,7 @@ class UrlParsingHint(ParsingHint):
                             key,
                             len(values)))
                 new_query_dict[key] = values[0]
-        query_dict = new_query_dict
+            query_dict = new_query_dict
 
         return {
             'url': url,

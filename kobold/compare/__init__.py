@@ -19,7 +19,8 @@ from .hints import (
     ObjectDictParsingHint,
     PickleParsingHint,
     ParsingHint,
-    TypeCompareHint)
+    TypeCompareHint,
+    UrlParsingHint)
 
 pattern_type = getattr(re, '_pattern_type', None)
 if pattern_type is None:
@@ -73,7 +74,9 @@ class DontCare(object):
 
     def compare_with(self, other_thing):
         if self.rule == 'not_none_or_missing':
-            return other_thing is not None
+            return (
+                other_thing is not None and
+                other_thing is not kobold.NotPresent)
         elif self.rule == 'list':
             if not isinstance(other_thing, list):
                 return False
