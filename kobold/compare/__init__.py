@@ -20,7 +20,8 @@ from .hints import (
     PickleParsingHint,
     ParsingHint,
     TypeCompareHint,
-    UrlParsingHint)
+    UrlParsingHint,
+    UrlEncodedParsingHint)
 
 pattern_type = getattr(re, '_pattern_type', None)
 if pattern_type is None:
@@ -66,6 +67,16 @@ class DontCare(object):
         self.options = kwargs
         self.validate()
 
+    def __str__(self):
+        if self.rule == 'number_within':
+            return "compare_rule: range within +/- {} of {}".format(
+                self.options['range'],
+                self.options['number']
+            )
+        else:
+            return "dontcare: {}".format(self.rule)
+
+
     def validate(self):
         if self.rule == 'isinstance':
             if self.options.get('of_class') is None:
@@ -99,8 +110,17 @@ class DontCare(object):
             return isinstance(other_thing, self.options['of_class'])
         elif self.rule is None or self.rule == 'no_rules':
             return True
+        elif self.rule == 'number_within':
+            number = self.options['number']
+            _range = self.options['range']
+            return (
+                other_thing > number - _range and
+                other_thing < number + _range
+            )
         else:
             raise kobold.ValidationError('DontCare rule {} not recognized'.format(self.rule))
+
+CompareRule = DontCare
         
 
 class ListDiff(list):
@@ -131,13 +151,13 @@ class OrderedList(list):
 class UnorderedList(list):
     pass
 
+
 class StructuredString(object):
     '''An attempt to provide recursive comparison for strings'''
 
     def __init__(self, regex, arguments):
         self.regex = regex
         self.arguments = arguments
-
 
 
 def normalize_type_compare(type_compare, defaults=None):
@@ -186,8 +206,7 @@ class Compare(object):
             if expected.compare_with(actual):
                 return 'match'
             else:
-                return ("dontcare: %s" % expected.rule,
-                        actual)
+                return (str(expected), actual)
         elif (type(expected) == pattern_type and 
               isinstance(actual, six.string_types)):
             match = expected.match(actual)

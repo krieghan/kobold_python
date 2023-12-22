@@ -91,6 +91,23 @@ class PickleParsingHint(ParsingHint):
     def sub_parse(self, thing_to_parse):
         return pickle.loads(thing_to_parse)
 
+
+def parse_qs(qs, qs_lists=True):
+    query_dict = urllib.parse.parse_qs(qs)
+    if not qs_lists:
+        new_query_dict = {}
+        for key, values in query_dict.items():
+            if len(values) > 1:
+                raise AssertionError(
+                    'len of values for qs key {} was {}, but '
+                    'should be 1'.format(
+                        key,
+                        len(values)))
+            new_query_dict[key] = values[0]
+        query_dict = new_query_dict
+    return query_dict
+
+
 class UrlParsingHint(ParsingHint):
     def __init__(self, payload, qs_lists=True):
         super().__init__(payload)
@@ -98,22 +115,19 @@ class UrlParsingHint(ParsingHint):
 
     def sub_parse(self, thing_to_parse):
         url, querystring = thing_to_parse.split('?')
-        query_dict = urllib.parse.parse_qs(querystring)
-        if not self.qs_lists:
-            new_query_dict = {}
-            for key, values in query_dict.items():
-                if len(values) > 1:
-                    raise AssertionError(
-                        'len of values for qs key {} was {}, but '
-                        'should be 1'.format(
-                            key,
-                            len(values)))
-                new_query_dict[key] = values[0]
-            query_dict = new_query_dict
-
+        query_dict = parse_qs(querystring, qs_lists=self.qs_lists)
         return {
             'url': url,
             'qs': query_dict}
+
+
+class UrlEncodedParsingHint(ParsingHint):
+    def __init__(self, payload, qs_lists=True):
+        super().__init__(payload)
+        self.qs_lists = qs_lists
+
+    def sub_parse(self, thing_to_parse):
+        return parse_qs(thing_to_parse, qs_lists=self.qs_lists)
 
 
 class MultiMatch(ParsingHint):

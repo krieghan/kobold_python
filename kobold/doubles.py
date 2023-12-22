@@ -311,9 +311,13 @@ class RoutableStubFunction(object):
     def reset(self):
         self.calls_by_key = {}
 
-    def clear_routes(self):
-        self.routes = {}
-        self.default_route = None
+    def clear_routes(self, keys=None):
+        if keys is None:
+            self.routes = {}
+            self.default_route = None
+        else:
+            for key in keys:
+                self.routes.pop(key)
 
     def calls_for_pattern(self, pattern):
         match_calls = []
@@ -394,7 +398,11 @@ class RoutableStubFunction(object):
         candidates = self.get_candidates(args, kwargs)
 
         if len(candidates) > 1:
-            raise StubRoutingException("More than one route candidate for stub: %s" % candidates)
+            raise StubRoutingException(
+                "More than one route candidate for stub: \n{}".format(
+                    pprint.pformat(candidates)
+                )
+            )
 
         if len(candidates) == 0:
             raise StubRoutingException(
