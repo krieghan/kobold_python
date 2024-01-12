@@ -3,6 +3,7 @@ import binascii
 import json
 import pickle
 import urllib.parse
+import zlib
 
 import kobold
 
@@ -31,6 +32,30 @@ class ParsingHint(object):
     def sub_parse(self, thing_to_parse):
         return thing_to_parse
 
+
+class Hint(ParsingHint):
+    def __init__(self, payload, rule):
+        self.payload = payload
+        self.rule = rule
+
+    def sub_parse(self, thing_to_parse):
+        if isinstance(self.rule, list):
+            rule = self.rule
+        else:
+            rule = [self.rule]
+
+        for rule_item in rule:
+            thing_to_parse = self.parse_by_rule(
+                thing_to_parse,
+                rule_item)
+
+        return thing_to_parse
+
+    def parse_by_rule(self, thing_to_parse, rule):
+        hint_class = hints_by_name[rule]
+        hint = hint_class(thing_to_parse)
+        return hint.sub_parse(thing_to_parse)
+            
 
 class TypeCompareHint(ParsingHint):
     def __init__(self, payload, type_compare):
@@ -130,6 +155,11 @@ class UrlEncodedParsingHint(ParsingHint):
         return parse_qs(thing_to_parse, qs_lists=self.qs_lists)
 
 
+class ZLibParsingHint(ParsingHint):
+    def sub_parse(self, thing_to_parse):
+        return zlib.decompress(thing_to_parse)
+
+
 class MultiMatch(ParsingHint):
     def __init__(self, payload):
         self.payload = payload
@@ -142,3 +172,13 @@ class MultiMatch(ParsingHint):
         return self.count > 0
 
 
+hints_by_name = {
+    'json': JSONParsingHint,
+    'base64': Base64Hint,
+    'pickle': PickleParsingHint,
+    'urlencoded': UrlEncodedParsingHint,
+    'type_compare': TypeCompareHint,
+    'object_dict': ObjectDictParsingHint,
+    'object_attr': ObjectAttrParsingHint,
+    'zlib': ZLibParsingHint
+}

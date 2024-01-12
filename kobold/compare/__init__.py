@@ -1,3 +1,4 @@
+import datetime
 import json
 import re
 import six
@@ -12,8 +13,9 @@ from kobold.hash_functions import (
         acts_like_a_list)
 from . import hints
 from .hints import (
-    JSONParsingHint,
     Base64Hint,
+    Hint,
+    JSONParsingHint,
     MultiMatch,
     ObjectAttrParsingHint,
     ObjectDictParsingHint,
@@ -105,6 +107,15 @@ class DontCare(object):
                 parser.parse(other_thing)
                 return True
             except:
+                return False
+        elif self.rule == 'date_string_with_format':
+            format_string = self.options['format_string']
+            try:
+                datetime.datetime.strptime(
+                    other_thing,
+                    format_string)
+                return True
+            except Exception as e:
                 return False
         elif self.rule == 'isinstance':
             return isinstance(other_thing, self.options['of_class'])
