@@ -250,15 +250,29 @@ class Route(object):
 
 
 class RotatingRoute(object):
-    def __init__(self, condition, routes, priority=0):
+    def __init__(self, condition, routes, priority=0, loop=False):
         self.condition = condition
         self.routes = routes
         self.index = 0
         self.priority = priority
+        self.loop = loop
 
     def select(self):
+        routes_len = len(self.routes)
+        if not self.loop:
+            if self.index >= routes_len:
+                raise AssertionError(
+                    'Non-loopable RotatingRoute was called {} times, '
+                    'but only has {} routes'.format(
+                        self.index + 1,
+                        routes_len
+                    )
+                )
         stub_type, stub_value = self.routes[self.index]
-        self.index = (self.index + 1) % len(self.routes)
+        if self.loop:
+            self.index = (self.index + 1) % routes_len
+        else:
+            self.index += 1
         return (self.condition, stub_type, stub_value)
 
     def add_route(self, route):

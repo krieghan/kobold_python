@@ -172,6 +172,11 @@ class MultiMatch(ParsingHint):
         return self.count > 0
 
 
+class NamedTupleHint(ParsingHint):
+    def sub_parse(self, thing_to_parse):
+        return thing_to_parse._asdict()
+
+
 hints_by_name = {
     'json': JSONParsingHint,
     'base64': Base64Hint,
@@ -180,5 +185,6 @@ hints_by_name = {
     'type_compare': TypeCompareHint,
     'object_dict': ObjectDictParsingHint,
     'object_attr': ObjectAttrParsingHint,
-    'zlib': ZLibParsingHint
+    'zlib': ZLibParsingHint,
+    'namedtuple': NamedTupleHint
 }
