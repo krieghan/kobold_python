@@ -34,7 +34,10 @@ class ParsingHint(object):
 
 
 class Hint(ParsingHint):
-    def __init__(self, payload, rule):
+    def __init__(self, payload, rule, init_params=None):
+        if init_params is None:
+            init_params = {}
+        self.init_params = init_params
         self.payload = payload
         self.rule = rule
 
@@ -53,7 +56,7 @@ class Hint(ParsingHint):
 
     def parse_by_rule(self, thing_to_parse, rule):
         hint_class = hints_by_name[rule]
-        hint = hint_class(thing_to_parse)
+        hint = hint_class(thing_to_parse, **self.init_params)
         return hint.sub_parse(thing_to_parse)
             
 
@@ -181,6 +184,7 @@ hints_by_name = {
     'json': JSONParsingHint,
     'base64': Base64Hint,
     'pickle': PickleParsingHint,
+    'url': UrlParsingHint,
     'urlencoded': UrlEncodedParsingHint,
     'type_compare': TypeCompareHint,
     'object_dict': ObjectDictParsingHint,
