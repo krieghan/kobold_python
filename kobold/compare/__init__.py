@@ -30,12 +30,15 @@ if pattern_type is None:
     pattern_type = getattr(re, 'Pattern')
 
 
-def compare(expected, actual, type_compare=None):
+def compare(expected, actual, type_compare=None, names=None):
     '''A wrapper around Compare.compare'''
+    if names is None:
+        names = {}
     return Compare.compare(
             expected,
             actual,
-            type_compare=type_compare)
+            type_compare=type_compare,
+            names=names)
 
 
 class DontCare(object):
@@ -64,13 +67,17 @@ class DontCare(object):
     
     def __init__(self,
                  rule='not_none_or_missing',
+                 name=None,
                  **kwargs):
         self.rule = rule
         self.options = kwargs
+        self.name = name
         self.validate()
 
     def __str__(self):
-        if self.rule == 'number_within':
+        if self.name is not None:
+            return "variable: {}".format(self.name)
+        elif self.rule == 'number_within':
             return "compare_rule: range within +/- {} of {}".format(
                 self.options['range'],
                 self.options['number']
@@ -85,7 +92,22 @@ class DontCare(object):
                 raise kobold.ValidationError('isinstance dontcares must have an "of_class" option specified')
         
 
-    def compare_with(self, other_thing):
+    def compare_with(self, other_thing, names=None):
+        if names is None:
+            names = {}
+
+        if self.name is not None:
+            value = names.get(self.name, NotPresent)
+            if value is not NotPresent:
+                if value == other_thing:
+                    return True
+                else:
+                    print(names)
+                    return False
+            else:
+                names[self.name] = other_thing
+
+
         if self.rule == 'not_none_or_missing':
             return (
                 other_thing is not None and
@@ -129,7 +151,9 @@ class DontCare(object):
                 other_thing < number + _range
             )
         else:
-            raise kobold.ValidationError('DontCare rule {} not recognized'.format(self.rule))
+            raise kobold.ValidationError(
+                'DontCare rule {} not recognized'.format(self.rule)
+            )
 
 CompareRule = DontCare
         
@@ -192,7 +216,10 @@ class Compare(object):
     def compare(cls,
                 expected,
                 actual,
-                type_compare=None):
+                type_compare=None,
+                names=None):
+        if names is None:
+            names = {}
         type_compare = normalize_type_compare(
             type_compare)
         if isinstance(expected, hints.TypeCompareHint):
@@ -205,7 +232,8 @@ class Compare(object):
             return cls.compare(
                 expected.payload,
                 actual,
-                type_compare)
+                type_compare,
+                names=names)
         if type_compare['ordered'] and type_compare['list'] == 'existing':
             raise kobold.ValidationError(
                 'Ordered list compare must always be "full", not "existing"')
@@ -214,7 +242,7 @@ class Compare(object):
             expected = DontCare()
 
         if isinstance(expected, DontCare):
-            if expected.compare_with(actual):
+            if expected.compare_with(actual, names=names):
                 return 'match'
             else:
                 return (str(expected), actual)
@@ -228,34 +256,42 @@ class Compare(object):
         elif isinstance(expected, hints.ParsingHint):
             try:
                 return cls.compare(
-                        expected.payload,
-                        expected.parse(actual),
-                        type_compare)
+                    expected.payload,
+                    expected.parse(actual),
+                    type_compare,
+                    names=names)
             except kobold.InvalidMatch:
                 return (expected, actual)
         elif (acts_like_a_hash(expected) and 
               acts_like_a_hash(actual)):
-            return cls.hash_compare(expected, 
-                                    actual, 
-                                    type_compare)
+            return cls.hash_compare(
+                expected, 
+                actual, 
+                type_compare,
+                names=names)
         elif (isinstance(expected, tuple) and isinstance(actual, tuple)):
-            return cls.list_compare(expected,
-                                    actual,
-                                    type_compare,
-                                    iter_type=tuple)
+            return cls.list_compare(
+                expected,
+                actual,
+                type_compare,
+                iter_type=tuple,
+                names=names)
         elif (acts_like_a_list(expected) and 
               acts_like_a_list(actual)):
-            return cls.list_compare(expected, 
-                                    actual,
-                                    type_compare,
-                                    iter_type=list)
+            return cls.list_compare(
+                expected, 
+                actual,
+                type_compare,
+                iter_type=list,
+                names=names)
 
         elif (isinstance(expected, StructuredString) and 
                 isinstance(actual, six.string_types)):
             return cls.structured_string_compare(
                 expected,
                 actual,
-                type_compare)
+                type_compare,
+                names=names)
 
         else:
             if expected == actual:
@@ -267,7 +303,10 @@ class Compare(object):
     def hash_compare(cls,
                      expected,
                      actual,
-                     type_compare={}):
+                     type_compare={},
+                     names=None):
+        if names is None:
+            names = {}
         default_type_compare =\
             {'hash' : 'full',
              'dontcare_keys' : [],
@@ -294,13 +333,17 @@ class Compare(object):
 
         for key in keys:
             if key in type_compare['dontcare_keys']:
-                result = cls.compare(DontCare, 
-                                     actual.get(key, kobold.NotPresent),
-                                     type_compare)
+                result = cls.compare(
+                    DontCare, 
+                    actual.get(key, kobold.NotPresent),
+                    type_compare,
+                    names=names)
             else:
-                result = cls.compare(expected.get(key, kobold.NotPresent),
-                                     actual.get(key, kobold.NotPresent),
-                                     type_compare)
+                result = cls.compare(
+                    expected.get(key, kobold.NotPresent),
+                    actual.get(key, kobold.NotPresent),
+                    type_compare,
+                    names=names)
 
             if result != 'match':
                 expected_sub, actual_sub = result
@@ -313,11 +356,15 @@ class Compare(object):
             return (expected_return, actual_return)
 
     @classmethod
-    def ordered_list_compare(cls,
-                             expected,
-                             actual,
-                             type_compare,
-                             iter_type=list):
+    def ordered_list_compare(
+            cls,
+            expected,
+            actual,
+            type_compare,
+            iter_type=list,
+            names=None):
+        if names is None:
+            names = {}
         expected_elements = ListDiff(display_type=iter_type)
         actual_elements = ListDiff(display_type=iter_type)
 
@@ -353,7 +400,8 @@ class Compare(object):
                         lookahead_result = cls.compare(
                             lookahead_value,
                             actual_value,
-                            type_compare)
+                            type_compare,
+                            names=names)
                         if lookahead_result == 'match':
                             expected_index += 1
                             continue
@@ -362,7 +410,8 @@ class Compare(object):
 
             result = cls.compare(expected_value,
                                  actual_value,
-                                 type_compare)
+                                 type_compare,
+                                 names=names)
             if result == 'match':
                 expected_elements.append_match()
                 actual_elements.append_match()
@@ -379,11 +428,13 @@ class Compare(object):
                     actual_elements.display())
 
     @classmethod
-    def unordered_list_compare(cls,
-                               expected,
-                               actual,
-                               type_compare,
-                               iter_type=list):
+    def unordered_list_compare(
+            cls,
+            expected,
+            actual,
+            type_compare,
+            iter_type=list,
+            names=None):
         # Make a list of all the indexes of the "expected" list 
         # and the "actual" list.  
         # Iterate through the "expected" list.  For each item,
@@ -399,6 +450,12 @@ class Compare(object):
         # from the list as we go.  The next iteration is +1 if we don't 
         # remove an element, but is +0 if we *do* remove an element.
         # There should be a saner way of going about this.
+
+        if names is None:
+            names = {}
+        candidate_names = names.copy()
+
+        child_names_list = []
         
         multimatch_indexes = []
         missing_expected_indexes = list(range(len(expected)))
@@ -413,12 +470,22 @@ class Compare(object):
                 continue
             actual_index_index = 0
             while actual_index_index < len(missing_actual_indexes):
+                child_names = {}
                 actual_index = missing_actual_indexes[actual_index_index]
                 actual_element = actual[actual_index]
                 result = cls.compare(expected_element, 
                                      actual_element, 
-                                     type_compare)
+                                     type_compare,
+                                     names=child_names)
                 if result == 'match':
+                    names_result = cls.compare(
+                        candidate_names,
+                        child_names,
+                        type_compare='existing')
+                    if names_result == 'match':
+                        candidate_names.update(child_names)
+                    else:
+                        continue
                     missing_expected_indexes.pop(expected_index_index)
                     missing_actual_indexes.pop(actual_index_index)
                     expected_index_index -= 1
@@ -439,7 +506,8 @@ class Compare(object):
                 result = cls.compare(
                     expected_element,
                     actual_element,
-                    type_compare)
+                    type_compare,
+                    names=names)
                 if result == 'match':
                     matched.append(expected_element)
 
@@ -463,7 +531,6 @@ class Compare(object):
                 if expected_element.matched():
                     missing_expected_indexes.remove(index)
 
-       
         # The remaining elements in the expected and actual
         # lists (the elements that didn't have a partner in the
         # other list) are all still "full".  My theory (unsubstantiated)
@@ -530,12 +597,14 @@ class Compare(object):
         if type_compare['list'] == 'full':
             if (len(expected_return) == 0 and
                 len(actual_return) == 0):
+                names.update(candidate_names)
                 return 'match'
             else:
                 return (expected_return.display(),
                         actual_return.display())
         elif type_compare['list'] == 'existing':
             if len(expected_return) == 0:
+                names.update(candidate_names)
                 return 'match'
             else:
                 return (expected_return.display(),
@@ -551,7 +620,10 @@ class Compare(object):
                      expected,
                      actual,
                      type_compare,
-                     iter_type=list):
+                     iter_type=list,
+                     names=None):
+        if names is None:
+            names = {}
         default_type_compare =\
             {'hash' : 'full',
              'ordered' : True}
@@ -572,15 +644,19 @@ class Compare(object):
                     not isinstance(expected, UnorderedList)
                 )
             ):
-            ret = cls.ordered_list_compare(expected,
-                                           actual,
-                                           type_compare,
-                                           iter_type=iter_type)
+            ret = cls.ordered_list_compare(
+                expected,
+                actual,
+                type_compare,
+                iter_type=iter_type,
+                names=names)
         else:
-            ret = cls.unordered_list_compare(expected,
-                                             actual,
-                                             type_compare,
-                                             iter_type=iter_type)
+            ret = cls.unordered_list_compare(
+                expected,
+                actual,
+                type_compare,
+                iter_type=iter_type,
+                names=names)
         if ret == 'match' or not isset:
             return ret
         else:
@@ -597,7 +673,7 @@ class Compare(object):
         if element is DontCare:
             element = DontCare()
         if isinstance(element, DontCare):
-            return "dontcare: %s" % element.rule
+            return str(element)
         elif acts_like_a_hash(element) and acts_like_a_hash(other_element):
             return cls.display_hash(element, other_element)
         elif isinstance(element, tuple) and isinstance(other_element, tuple):
@@ -655,7 +731,12 @@ class Compare(object):
         return iter_type(display_list)
 
     @classmethod
-    def structured_string_compare(cls, expected, actual, type_compare={}):
+    def structured_string_compare(
+            cls,
+            expected,
+            actual,
+            type_compare={},
+            names=None):
         default_type_compare =\
             {'hash' : 'full',
              'dontcare_keys' : [],
@@ -669,7 +750,8 @@ class Compare(object):
             return cls.compare(
                 expected.arguments,
                 match.groups(),
-                type_compare=type_compare)
+                type_compare=type_compare,
+                names=names)
         else:
             return (
                 'structured string regex: {}'.format(

@@ -56,7 +56,7 @@ class Hint(ParsingHint):
 
     def parse_by_rule(self, thing_to_parse, rule):
         hint_class = hints_by_name[rule]
-        hint = hint_class(thing_to_parse, **self.init_params)
+        hint = hint_class(self.payload, **self.init_params)
         return hint.sub_parse(thing_to_parse)
             
 
