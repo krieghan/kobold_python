@@ -27,3 +27,5 @@ from . import (
     hash_functions,
     html,
     response)
+
+from kobold.compare import DontCare

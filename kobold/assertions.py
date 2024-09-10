@@ -5,7 +5,8 @@ import kobold
 def assert_response_matches(expected,
                             response,
                             type_compare=None,
-                            exception_context=None):
+                            exception_context=None,
+                            header_type_compare='existing'):
     '''
     If the responses don't match (in the kobold.compare sense),
     raise an AssertionError
@@ -16,7 +17,8 @@ def assert_response_matches(expected,
     result = kobold.response.response_matches(
         expected,
         response,
-        type_compare=type_compare)
+        type_compare=type_compare,
+        header_type_compare=header_type_compare)
     raise_if_not_match(result, exception_context=exception_context)
 
 def assert_equal(

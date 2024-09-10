@@ -17,7 +17,8 @@ def parse_body(content_type, content):
 
 def response_matches(expected,
                      response,
-                     type_compare=None):
+                     type_compare=None,
+                     header_type_compare='existing'):
     '''
     Compare two HTTP responses (using kobold.compare).
     A type_compare may be provided, but if none is set,
@@ -61,20 +62,22 @@ def response_matches(expected,
     default_expected =\
         {'status_code' : 200,
          'headers' : {}}
-    default_expected_headers =\
-        {'__compare' : 'existing'}
 
     for key, value in default_expected.items():
         expected.setdefault(key, value)
 
-    for key, value in default_expected_headers.items():
-        expected['headers'].setdefault(key, value)
+    expected['headers'] = compare.TypeCompareHint(
+        payload=expected['headers'],
+        type_compare=header_type_compare
+    )
 
     content_type = response.headers.get('Content-Type')
     actual = {'status_code' : response.status_code,
               'headers' : response.headers,
               'body' : parse_body(content_type, response.data)}
 
-    return compare.compare(expected, 
-                   actual,
-                   type_compare)
+    return compare.compare(
+        expected, 
+        actual,
+        type_compare
+    )

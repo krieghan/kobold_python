@@ -55,6 +55,10 @@ class Hint(ParsingHint):
         return thing_to_parse
 
     def parse_by_rule(self, thing_to_parse, rule):
+        if rule == 'type_compare':
+            raise NotImplementedError(
+                'Hint class cannot be used with "type_compare" rule'
+            )
         hint_class = hints_by_name[rule]
         hint = hint_class(self.payload, **self.init_params)
         return hint.sub_parse(thing_to_parse)
