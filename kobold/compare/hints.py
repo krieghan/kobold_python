@@ -146,8 +146,17 @@ class UrlParsingHint(ParsingHint):
         self.qs_lists = qs_lists
 
     def sub_parse(self, thing_to_parse):
-        url, querystring = thing_to_parse.split('?')
-        query_dict = parse_qs(querystring, qs_lists=self.qs_lists)
+        parts = thing_to_parse.split('?', 1)
+        if len(parts) == 2:
+            url, querystring = parts
+            query_dict = parse_qs(querystring, qs_lists=self.qs_lists)
+        elif len(parts) == 1:
+            url = parts[0]
+            query_dict = None
+        else:
+            raise NotImplementedError()
+        
+
         return {
             'url': url,
             'qs': query_dict}

@@ -1,6 +1,7 @@
 import json
 import re
 
+import kobold
 from kobold import compare
 
 
@@ -66,6 +67,13 @@ def response_matches(expected,
     for key, value in default_expected.items():
         expected.setdefault(key, value)
 
+    # If the response code is 302, force the location
+    # header to be included in the diff
+    if (response.status_code == 302 and
+            response.status_code != expected['status_code'] and
+            expected['headers'].get('location') is None):
+        expected['headers']['location'] = kobold.NotPresent
+
     expected['headers'] = compare.TypeCompareHint(
         payload=expected['headers'],
         type_compare=header_type_compare
@@ -75,6 +83,7 @@ def response_matches(expected,
     actual = {'status_code' : response.status_code,
               'headers' : response.headers,
               'body' : parse_body(content_type, response.data)}
+
 
     return compare.compare(
         expected, 
