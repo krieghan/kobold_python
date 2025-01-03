@@ -79,7 +79,7 @@ def response_matches(expected,
         type_compare=header_type_compare
     )
 
-    content_type = response.headers.get('Content-Type')
+    content_type = response.headers.get('content-type')
     actual = {'status_code' : response.status_code,
               'headers' : response.headers,
               'body' : parse_body(content_type, response.data)}

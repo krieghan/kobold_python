@@ -211,6 +211,12 @@ def normalize_type_compare(type_compare, defaults=None):
     return type_compare
 
 
+def get_force_compare_types():
+    import unittest.mock
+
+    return (unittest.mock._Call,)
+
+
 class Compare(object):
     @classmethod
     def compare(cls,
@@ -222,6 +228,7 @@ class Compare(object):
             names = {}
         type_compare = normalize_type_compare(
             type_compare)
+        force_compare_types = get_force_compare_types()
         if isinstance(expected, hints.TypeCompareHint):
             # If this is a TypeCompareHint, create a new type_compare
             # based on what's on the class, but using the type_compare
@@ -246,6 +253,13 @@ class Compare(object):
                 return 'match'
             else:
                 return (str(expected), actual)
+        elif (type(expected) in force_compare_types and
+                type(actual) in force_compare_types):
+            if expected == actual:
+                return 'match'
+            else:
+                return (expected, actual)
+
         elif (type(expected) == pattern_type and 
               isinstance(actual, six.string_types)):
             match = expected.match(actual)

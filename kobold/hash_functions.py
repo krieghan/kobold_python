@@ -62,13 +62,13 @@ def deep_combine(default, extra):
 
 
 def acts_like_a_hash(candidate):
-    return hasattr(candidate, 'items')
+    return isinstance(candidate, dict)
+
 
 def acts_like_a_list(candidate):
-    return (hasattr(candidate, '__iter__') and 
-            hasattr(candidate, '__len__') and
-            not isinstance(candidate, six.string_types) and
-            not isinstance(candidate, dict))
+    return (isinstance(candidate, list) or
+                isinstance(candidate, set) or
+                isinstance(candidate, tuple))
 
 
 # Based on https://stackoverflow.com/a/1151686/2619588'''
