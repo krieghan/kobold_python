@@ -1,3 +1,5 @@
+import collections
+
 import kobold
 import six
 
@@ -62,7 +64,7 @@ def deep_combine(default, extra):
 
 
 def acts_like_a_hash(candidate):
-    return isinstance(candidate, dict)
+    return isinstance(candidate, (dict, collections.abc.Mapping))
 
 
 def acts_like_a_list(candidate):

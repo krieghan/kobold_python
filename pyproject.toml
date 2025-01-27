@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kobold"
+version = "12.13.0"
+description = "Various tools for working with, and writing tests in Python"
+authors = [
+    {name = "Krieghan J. Riley", email = "krieghan.riley@gmail.com"}
+]
+requires-python = ">=3.0"
+dependencies = [
+    "python-dateutil"
+]
+readme = "README.md"
+keywords = ["test", "mock", "double", "compare"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Software Development :: Testing :: Mocking",
+    "Topic :: Software Development :: Testing :: Unit",
+]
+
+[project.optional-dependencies]
+dev = [
+    "flake8"
+]
+
+
+[project.urls]
+Repository = "https://github.com/krieghan/kobold_python.git"
+Homepage = "https://github.com/krieghan/kobold_python.git"
+Documentation = "https://github.com/krieghan/kobold_python.git"
+
+[tool.black]
+line-length = 80
+
+[tool.flake8]
+max-line-length = 80
