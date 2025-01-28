@@ -1,1 +1,3 @@
-python setup.py sdist upload -r pypi
+rm -rf dist
+python -m build
+twine upload dist/*
