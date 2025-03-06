@@ -1,3 +1,4 @@
+import collections
 import datetime
 import json
 import re
@@ -8,9 +9,8 @@ from dateutil import parser
 import kobold
 from kobold import NotPresent
 from kobold.hash_functions import (
-        combine,
-        acts_like_a_hash,
-        acts_like_a_list)
+    combine
+)
 from . import hints
 from .hints import (
     Base64Hint,
@@ -771,3 +771,30 @@ class Compare(object):
                 'structured string regex: {}'.format(
                     expected.regex.pattern),
                 actual)
+
+hash_compare_types = (dict, collections.abc.Mapping)
+list_compare_types = (list, set, tuple)
+
+
+def add_hash_compare_types(new_types):
+    global hash_compare_types
+    hash_compare_types_set = set(hash_compare_types)
+    for new_type in new_types:
+        hash_compare_types_set.add(new_type)
+    hash_compare_types = tuple(hash_compare_types_set)
+
+
+def add_list_compare_types(new_types):
+    global list_compare_types
+    list_compare_types_set = set(list_compare_types)
+    for new_type in new_types:
+        list_compare_types_set.add(new_type)
+    list_compare_types = tuple(list_compare_types_set)
+    
+
+def acts_like_a_hash(candidate):
+    return isinstance(candidate, hash_compare_types)
+
+
+def acts_like_a_list(candidate):
+    return isinstance(candidate, list_compare_types)

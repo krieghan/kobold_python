@@ -1,5 +1,3 @@
-import collections
-
 import kobold
 import six
 
@@ -63,16 +61,6 @@ def deep_combine(default, extra):
     return new
 
 
-def acts_like_a_hash(candidate):
-    return isinstance(candidate, (dict, collections.abc.Mapping))
-
-
-def acts_like_a_list(candidate):
-    return (isinstance(candidate, list) or
-                isinstance(candidate, set) or
-                isinstance(candidate, tuple))
-
-
 # Based on https://stackoverflow.com/a/1151686/2619588'''
 class HashableDict(dict):
     def __key(self):
@@ -116,12 +104,12 @@ class HashableList(list):
 
 
 def make_hashable(data_structure):
-    if acts_like_a_list(data_structure):
+    if kobold.compare.acts_like_a_list(data_structure):
         new_data_structure = HashableList()
         for element in data_structure:
             new_data_structure.append(make_hashable(element))
         return new_data_structure
-    elif acts_like_a_hash(data_structure):
+    elif kobold.compare.acts_like_a_hash(data_structure):
         new_data_structure = HashableDict()
         for key, value in data_structure.items():
             new_key = make_hashable(key)

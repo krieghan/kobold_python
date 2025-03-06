@@ -5,8 +5,8 @@ import types
 import uuid
 
 from kobold import (
-        compare,
-        hash_functions)
+    compare,
+    hash_functions)
 
 async def wrap_with_coroutine(
         returns=None,
@@ -357,7 +357,7 @@ class RoutableStubFunction(object):
             if condition == 'default':
                 continue
             
-            if hash_functions.acts_like_a_hash(condition):
+            if compare.acts_like_a_hash(condition):
                 if set(condition.keys()).intersection(
                         set(['args', 'kwargs', 'self'])):
                     thing_to_compare = {
@@ -372,7 +372,7 @@ class RoutableStubFunction(object):
                                 condition_self)
                 else:
                     thing_to_compare = kwargs
-            elif hash_functions.acts_like_a_list(condition):
+            elif compare.acts_like_a_list(condition):
                 thing_to_compare = args
             else:
                 raise Exception("Unknown condition type: %s" % type(condition))
