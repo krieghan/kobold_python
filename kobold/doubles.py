@@ -144,11 +144,13 @@ class SpyFunction(object):
        factory is supplied (by default StubFunction).  The args and kwargs
        are passed into StubFunction, so that a Spy can specify what it's
        return behavior is'''
+    spy_call_factory = SpyCall
 
     def __init__(self, stub_function_factory=StubFunction, *args, **kwargs):
         self.stub_function = stub_function_factory(*args, **kwargs)
         self.awaitable = self.stub_function.awaitable
         self.calls = []
+        self.extra_call_init = {}
 
     def reset(self):
         '''Forget any calls this spy has recorded'''
@@ -157,10 +159,11 @@ class SpyFunction(object):
             self.stub_function.reset()
 
     def __call__(self, *args, original_reference=None, **kwargs):
-        call = SpyCall(
+        call = self.spy_call_factory(
             args=args,
             kwargs=kwargs,
-            from_coroutine=self.awaitable)
+            from_coroutine=self.awaitable,
+            **self.extra_call_init)
         self.calls.append(call)
         try:
             to_return = self.stub_function(
