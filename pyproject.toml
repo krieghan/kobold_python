@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kobold"
-version = "12.15.0"
+version = "12.15.1"
 description = "Various tools for working with, and writing tests in Python"
 authors = [
     {name = "Krieghan J. Riley", email = "krieghan.riley@gmail.com"}

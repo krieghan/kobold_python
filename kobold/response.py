@@ -71,6 +71,7 @@ def response_matches(expected,
     # header to be included in the diff
     if (response.status_code == 302 and
             response.status_code != expected['status_code'] and
+            getattr(expected['headers'], 'get', None) is not None and
             expected['headers'].get('location') is None):
         expected['headers']['location'] = kobold.NotPresent
 
