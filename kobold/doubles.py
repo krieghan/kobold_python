@@ -1,5 +1,6 @@
 import asyncio
 import fnmatch
+import inspect
 import pprint
 import types
 import uuid
@@ -19,7 +20,8 @@ async def wrap_with_coroutine(
         raise raises
 
     if is_call:
-        returns = await returns
+        if inspect.isawaitable(returns):
+            returns = await returns
 
     if spy_call:
         spy_call.returned = returns
@@ -88,7 +90,8 @@ class StubFunction(object):
             if self.awaitable:
                 return wrap_with_coroutine(
                     raises=self.to_raise,
-                    spy_call=spy_call)
+                    spy_call=spy_call
+                )
             else:
                 raise self.to_raise
         elif self.to_call:

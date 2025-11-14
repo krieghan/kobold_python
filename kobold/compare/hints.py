@@ -71,7 +71,8 @@ class TypeCompareHint(ParsingHint):
 
     def parse(self, *args, **kwargs):
         raise NotImplementedError(
-            'TypeCompareHint should never be used in comparisons!')
+            'TypeCompareHint should never be used in comparisons!'
+        )
 
 
 class JSONParsingHint(ParsingHint):
